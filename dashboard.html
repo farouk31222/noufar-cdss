@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NOUFAR CDSS | Clinical Dashboard</title>
+    <meta
+      name="description"
+      content="Clinical dashboard for NOUFAR CDSS with hyperthyroid relapse predictions, cohort metrics, and recent patient results."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" href="assets/noufar-logo.png" />
+    <link rel="shortcut icon" href="assets/noufar-logo.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body class="app-body dashboard-body">
+    <div class="app-layout">
+      <aside class="sidebar" aria-label="Primary">
+        <a class="sidebar-logo" href="dashboard.html" aria-label="NOUFAR CDSS dashboard">
+          <img class="sidebar-logo-image" src="assets/noufar-logo.png" alt="NOUFAR CDSS logo" />
+          <span class="sidebar-logo-copy">
+            <strong>NOUFAR</strong>
+            <small>CDSS</small>
+          </span>
+        </a>
+
+        <nav class="sidebar-nav">
+          <a class="sidebar-link active" href="dashboard.html">
+            <img class="sidebar-icon-image" src="assets/sidebar-dashboard-icon.png" alt="" aria-hidden="true" />
+            <span>Dashboard</span>
+          </a>
+          <a class="sidebar-link" href="new-prediction.html">
+            <img class="sidebar-icon-image" src="assets/sidebar-plus-icon.png" alt="" aria-hidden="true" />
+            <span>New Prediction</span>
+          </a>
+          <a class="sidebar-link" href="#" data-coming-soon-trigger="Patients">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 11a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Zm-6.5 8a6.5 6.5 0 0 1 13 0" />
+            </svg>
+            <span>Patients</span>
+          </a>
+          <a class="sidebar-link" href="#" data-coming-soon-trigger="Statistics">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19h16M7 16V8m5 8V5m5 11v-6" />
+            </svg>
+            <span>Statistics</span>
+          </a>
+        </nav>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <button class="mobile-nav-button" type="button" aria-expanded="false" aria-label="Toggle sidebar">
+            <span></span>
+            <span></span>
+          </button>
+
+          <div class="topbar-spacer"></div>
+
+          <label class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
+            </svg>
+            <input type="search" placeholder="Search patients, IDs..." />
+          </label>
+
+          <div class="topbar-icons" aria-label="Toolbar">
+            <button class="icon-button" type="button" aria-label="Notifications">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3a4 4 0 0 0-4 4v2.3c0 .7-.2 1.39-.58 1.97L6 13.5h12l-1.42-2.23A3.7 3.7 0 0 1 16 9.3V7a4 4 0 0 0-4-4Zm-2 14a2 2 0 0 0 4 0" />
+              </svg>
+            </button>
+            <div class="profile-menu-shell">
+              <button
+                class="profile-trigger"
+                type="button"
+                aria-label="Open profile menu"
+                aria-expanded="false"
+                data-profile-toggle
+              >
+                <span class="profile-trigger-avatar">DC</span>
+              </button>
+
+              <section class="profile-menu-card" data-profile-menu hidden>
+                <div class="profile-menu-head">
+                  <div class="profile-menu-avatar">DC</div>
+                  <div class="profile-menu-copy">
+                    <strong>Dr. Clinical Lead</strong>
+                    <span>Endocrinology Unit</span>
+                  </div>
+                </div>
+
+                <nav class="profile-menu-links" aria-label="Profile menu">
+                  <a class="profile-menu-link" href="history.html">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M5 12a7 7 0 1 0 2-4.9M5 4v5h5" />
+                    </svg>
+                    <span>Prediction History</span>
+                  </a>
+                  <a class="profile-menu-link" href="account-settings.html">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 3.5-2.1.7a6.8 6.8 0 0 1-.5 1.3l1.1 2-2 2-2-1.1a6.8 6.8 0 0 1-1.3.5L12 20l-1.2-2.1a6.8 6.8 0 0 1-1.3-.5l-2 1.1-2-2 1.1-2a6.8 6.8 0 0 1-.5-1.3L4 12l2.1-1.2a6.8 6.8 0 0 1 .5-1.3l-1.1-2 2-2 2 1.1a6.8 6.8 0 0 1 1.3-.5L12 4l1.2 2.1a6.8 6.8 0 0 1 1.3.5l2-1.1 2 2-1.1 2a6.8 6.8 0 0 1 .5 1.3L20 12Z" />
+                    </svg>
+                    <span>Account Settings</span>
+                  </a>
+                  <a class="profile-menu-link" href="index.html#support">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 12c0-4.42 3.58-8 8-8s8 3.58 8 8-3.58 8-8 8m0-4v.01M12 8a2.5 2.5 0 0 1 2.5 2.5c0 1.8-2.5 2.1-2.5 4" />
+                    </svg>
+                    <span>Support Center</span>
+                  </a>
+                </nav>
+
+                <div class="profile-menu-footer">
+                  <a class="profile-menu-link logout" href="index.html">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m10 17 5-5-5-5M15 12H4m7-8h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />
+                    </svg>
+                    <span>Logout</span>
+                  </a>
+                </div>
+              </section>
+            </div>
+          </div>
+        </header>
+
+        <main class="main-content dashboard-main" id="dashboard-main">
+          <section class="dashboard-hero">
+            <div class="dashboard-hero-copy">
+              <span class="dashboard-hero-kicker">Clinical intelligence workspace</span>
+              <h1>Hyperthyroid Relapse Overview</h1>
+              <p>
+                Monitor the active cohort, identify relapse-prone profiles earlier, and keep
+                recent prediction activity in one clean clinical workspace.
+              </p>
+              <div class="dashboard-hero-pills" aria-label="Dashboard highlights">
+                <span class="dashboard-pill">Doctor-only workflow</span>
+                <span class="dashboard-pill">Relapse probability monitoring</span>
+                <span class="dashboard-pill">Recent cohort review</span>
+              </div>
+            </div>
+
+          </section>
+
+          <section class="metrics-row" id="statistics-panel" aria-label="Key metrics">
+            <article class="stat-card stat-card-blue">
+              <div class="stat-card-head">
+                <span>Total Patients Analyzed</span>
+                <i class="stat-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0" />
+                  </svg>
+                </i>
+              </div>
+              <strong class="stat-number" id="stat-total">0</strong>
+              <p class="stat-note stat-note-positive" id="stat-total-note">0% of active cohort</p>
+            </article>
+
+            <article class="stat-card stat-card-red">
+              <div class="stat-card-head">
+                <span>Predicted Relapse</span>
+                <i class="stat-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m12 4 7 14H5L12 4Zm0 5v4m0 3h.01" />
+                  </svg>
+                </i>
+              </div>
+              <strong class="stat-number" id="stat-relapse">0</strong>
+              <p class="stat-note stat-note-critical" id="stat-relapse-note">0% of total cases</p>
+            </article>
+
+            <article class="stat-card stat-card-navy">
+              <div class="stat-card-head">
+                <span>Predicted Non-Relapse</span>
+                <i class="stat-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 0V4m0 16v-3m8-5h-3M7 12H4" />
+                  </svg>
+                </i>
+              </div>
+              <strong class="stat-number" id="stat-no-relapse">0</strong>
+              <p class="stat-note" id="stat-no-relapse-note">0% of total cases</p>
+            </article>
+
+            <article class="stat-card stat-card-amber">
+              <div class="stat-card-head">
+                <span>Avg Relapse Probability</span>
+                <i class="stat-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3v18M7 8.5A5 5 0 1 1 12 17" />
+                  </svg>
+                </i>
+              </div>
+              <strong class="stat-number" id="stat-average">0%</strong>
+              <p class="stat-note" id="stat-average-note">Stable across cohort</p>
+            </article>
+          </section>
+
+          <section class="dashboard-grid">
+            <div class="dashboard-primary-column">
+              <article class="surface-card table-card dashboard-table-card">
+                <div class="table-card-head">
+                  <div>
+                    <div class="section-title">Recent Patient Predictions</div>
+                    <p class="dashboard-section-copy">
+                      Latest cohort-level relapse assessments generated by the clinical workflow.
+                    </p>
+                  </div>
+                  <a class="table-link" href="history.html">View all</a>
+                </div>
+
+                <div class="table-shell">
+                  <table class="results-table">
+                    <thead>
+                      <tr>
+                        <th>Patient ID</th>
+                        <th>Date</th>
+                        <th>Prediction</th>
+                        <th>Probability</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recent-activity"></tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="surface-card dashboard-trend-card">
+                <div class="table-card-head dashboard-card-head">
+                  <div>
+                    <div class="section-title">Cohort Monitoring Trend</div>
+                    <p class="dashboard-section-copy">
+                      Last six analyses showing where closer relapse monitoring is concentrating.
+                    </p>
+                  </div>
+                  <span class="dashboard-inline-chip">Updated daily</span>
+                </div>
+
+                <div class="dashboard-trend-layout">
+                  <div class="trend-series-panel">
+                    <div class="trend-series" id="trend-series" aria-label="Recent relapse trend"></div>
+                  </div>
+
+                  <div class="trend-summary-grid" aria-label="Operational summary">
+                    <article class="trend-summary-card">
+                      <span>Manual entries</span>
+                      <strong id="source-manual">0</strong>
+                      <small>Direct clinician form input</small>
+                    </article>
+                    <article class="trend-summary-card">
+                      <span>Imported datasets</span>
+                      <strong id="source-import">0</strong>
+                      <small>CSV and Excel-supported reviews</small>
+                    </article>
+                    <article class="trend-summary-card">
+                      <span>High-risk queue</span>
+                      <strong id="high-risk-count">0</strong>
+                      <small>Cases above 70% relapse probability</small>
+                    </article>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <aside class="dashboard-side-column">
+              <article class="surface-card dashboard-focus-card">
+                <span class="dashboard-side-kicker">Priority review</span>
+                <h2>Current Clinical Focus</h2>
+                <p class="dashboard-side-copy">
+                  Highest-priority patient profile currently surfaced for review.
+                </p>
+
+                <div class="focus-patient-card">
+                  <div class="focus-patient-head">
+                    <div>
+                      <strong id="focus-patient-id">No patient selected</strong>
+                      <span id="focus-patient-meta">Awaiting cohort activity</span>
+                    </div>
+                    <span class="prediction-badge warning" id="focus-patient-result">Pending</span>
+                  </div>
+
+                  <div class="focus-probability-block">
+                    <span>Relapse probability</span>
+                    <strong id="focus-patient-probability">0%</strong>
+                  </div>
+
+                  <div class="focus-probability-bar" aria-hidden="true">
+                    <i id="focus-patient-bar" style="width: 0%"></i>
+                  </div>
+                </div>
+              </article>
+
+              <article class="surface-card distribution-card dashboard-distribution-card">
+                <div class="table-card-head dashboard-card-head">
+                  <div>
+                    <div class="section-title">Cohort Distribution</div>
+                    <p class="dashboard-section-copy">
+                      Balance between relapse and non-relapse outcomes in the active cohort.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="cohort-chart dashboard-cohort-chart">
+                  <div class="cohort-donut-panel">
+                    <div class="cohort-donut-backdrop" aria-hidden="true"></div>
+                    <div class="cohort-donut semi-donut" aria-hidden="true">
+                      <svg viewBox="0 0 160 100">
+                        <defs>
+                          <linearGradient id="donut-blue-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#5c89f4"></stop>
+                            <stop offset="100%" stop-color="#3f71ea"></stop>
+                          </linearGradient>
+                        </defs>
+                        <path
+                          class="semi-donut-track"
+                          d="M 24 80 A 56 56 0 0 1 136 80"
+                          pathLength="100"
+                        ></path>
+                        <path
+                          class="semi-donut-segment semi-donut-stable"
+                          id="donut-safe"
+                          d="M 24 80 A 56 56 0 0 1 136 80"
+                          pathLength="100"
+                        ></path>
+                        <path
+                          class="semi-donut-segment semi-donut-relapse"
+                          id="donut-relapse"
+                          d="M 24 80 A 56 56 0 0 1 136 80"
+                          pathLength="100"
+                        ></path>
+                      </svg>
+                    </div>
+                    <div class="cohort-donut-center">
+                      <strong id="donut-total">0</strong>
+                      <span>Active patients</span>
+                    </div>
+                  </div>
+
+                  <div class="cohort-legend dashboard-cohort-legend">
+                    <div class="legend-chip legend-chip-relapse">
+                      <span class="legend-dot relapse"></span>
+                      <div class="legend-copy">
+                        <small>Relapse cohort</small>
+                        <p id="legend-relapse-count">0 patients</p>
+                      </div>
+                      <strong id="legend-relapse">0%</strong>
+                    </div>
+                    <div class="legend-chip legend-chip-stable">
+                      <span class="legend-dot stable"></span>
+                      <div class="legend-copy">
+                        <small>Stable cohort</small>
+                        <p id="legend-safe-count">0 patients</p>
+                      </div>
+                      <strong id="legend-safe">0%</strong>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="surface-card dashboard-queue-card">
+                <div class="table-card-head dashboard-card-head">
+                  <div>
+                    <div class="section-title">Priority Review Queue</div>
+                    <p class="dashboard-section-copy">
+                      Patients with the strongest relapse signal requiring attention first.
+                    </p>
+                  </div>
+                  <span class="dashboard-inline-chip" id="queue-count">0 cases</span>
+                </div>
+
+                <div class="priority-list" id="priority-list"></div>
+              </article>
+            </aside>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <section class="modal-shell" id="coming-soon-modal" hidden aria-labelledby="coming-soon-title" aria-modal="true" role="dialog">
+      <div class="modal-backdrop" data-coming-soon-close></div>
+      <div class="modal-card modal-card-coming-soon">
+        <div class="modal-card-head coming-soon-head">
+          <div>
+            <h2 id="coming-soon-title">Coming Soon</h2>
+            <p id="coming-soon-copy">This NOUFAR CDSS workspace is currently being prepared for a future release.</p>
+          </div>
+          <button class="modal-close-button" type="button" aria-label="Close coming soon modal" data-coming-soon-close>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+
+        <div class="coming-soon-art" aria-hidden="true">
+          <div class="coming-soon-frame">
+            <strong>COMING SOON</strong>
+            <span>STAY TUNED</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script src="data.js"></script>
+    <script src="app-shell.js"></script>
+    <script src="dashboard.js"></script>
+  </body>
+</html>

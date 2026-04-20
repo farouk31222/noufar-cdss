@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NOUFAR Admin | Doctor Details</title>
+    <meta name="description" content="Doctor details review page with personal info, professional documents, status history, and support history." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" href="../assets/noufar-logo.png" />
+    <link rel="stylesheet" href="admin-styles.css" />
+  </head>
+  <body data-page="doctor-details">
+    <div class="admin-shell">
+      <aside class="admin-sidebar">
+        <a class="sidebar-brand" href="index.html">
+          <img src="../assets/noufar-logo.png" alt="NOUFAR CDSS logo" />
+          <div class="sidebar-brand-copy">
+            <strong>NOUFAR Admin</strong>
+            <span>Doctor management console</span>
+          </div>
+        </a>
+
+        <nav class="sidebar-nav" aria-label="Primary">
+          <div class="sidebar-nav-group sidebar-nav-group-main">
+            <span class="sidebar-nav-label">Workspace</span>
+            <a class="sidebar-link" href="index.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h7V4H4v8Zm9 8h7v-6h-7v6Zm0-16v8h7V4h-7ZM4 20h7v-6H4v6Z" /></svg>
+              <span>Overview</span>
+            </a>
+            <a class="sidebar-link active" href="doctors.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Zm-6.5 8a6.5 6.5 0 0 1 13 0" /></svg>
+              <span>Doctors</span>
+            </a>
+            <a class="sidebar-link" href="support-center.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5m-7 6 2.2-2H18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2Z" /></svg>
+              <span>Support Center</span>
+            </a>
+          </div>
+        </nav>
+      </aside>
+
+      <section class="admin-workspace">
+        <header class="topbar">
+          <button class="topbar-toggle" type="button" aria-label="Toggle sidebar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+
+          <div class="topbar-title-block">
+            <span class="eyebrow">Credential review</span>
+            <h1>Doctor Details</h1>
+          </div>
+
+          <label class="topbar-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" /></svg>
+            <input type="search" placeholder="Search profile notes, document name..." />
+          </label>
+
+          <div class="topbar-actions">
+            <a class="icon-button" href="doctors.html" aria-label="Back to doctors list">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </a>
+            <button class="icon-button profile-trigger" type="button" aria-label="Admin profile">
+              <span class="topbar-profile-avatar">SA</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="admin-main admin-main-clean" id="doctor-detail-root">
+          <section class="page-header-card">
+            <div class="page-header-copy">
+              <span class="hero-kicker">Doctor verification dossier</span>
+              <h2 id="detail-name">Doctor Name</h2>
+              <p id="detail-subtitle">Specialty and hospital information</p>
+            </div>
+            <div class="page-header-actions detail-status-actions">
+              <div id="detail-approval"></div>
+              <div id="detail-account"></div>
+            </div>
+          </section>
+
+          <section class="panel-grid">
+            <div class="left-stack">
+              <article class="detail-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Personal and professional information</h3>
+                    <p>Primary physician profile data submitted during registration.</p>
+                  </div>
+                </div>
+                <div class="stats-grid">
+                  <div class="stat-chip"><span>Email</span><strong id="detail-email"></strong></div>
+                  <div class="stat-chip"><span>Phone</span><strong id="detail-phone"></strong></div>
+                  <div class="stat-chip"><span>License number</span><strong id="detail-license"></strong></div>
+                  <div class="stat-chip"><span>Hospital</span><strong id="detail-hospital"></strong></div>
+                  <div class="stat-chip"><span>Specialty</span><strong id="detail-specialty"></strong></div>
+                  <div class="stat-chip"><span>Location</span><strong id="detail-location"></strong></div>
+                  <div class="stat-chip"><span>Years in practice</span><strong id="detail-practice"></strong></div>
+                  <div class="stat-chip"><span>Registration date</span><strong id="detail-registration"></strong></div>
+                </div>
+              </article>
+
+              <article class="detail-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Uploaded documents</h3>
+                    <p>Review every professional document submitted by the doctor.</p>
+                  </div>
+                </div>
+                <div class="document-list" id="detail-documents"></div>
+              </article>
+
+              <article class="detail-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Support history</h3>
+                    <p>Previous conversations or help requests linked to this doctor account.</p>
+                  </div>
+                </div>
+                <div class="list-stack" id="detail-support-history"></div>
+              </article>
+            </div>
+
+            <div class="right-stack">
+              <article class="detail-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Admin actions</h3>
+                    <p>Approve, reject, deactivate, or permanently delete the doctor account.</p>
+                  </div>
+                </div>
+                <div class="action-row" id="detail-actions">
+                  <button class="action-button primary" type="button" data-detail-action="approve">Approve</button>
+                  <button class="action-button secondary" type="button" data-detail-action="reject">Reject</button>
+                  <button class="action-button soft" type="button" data-detail-action="deactivate">Deactivate</button>
+                  <button class="action-button secondary" type="button" data-detail-action="reactivate">Reactivate</button>
+                  <button class="action-button danger" type="button" data-detail-action="delete">Delete</button>
+                </div>
+              </article>
+
+              <article class="detail-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Review notes</h3>
+                    <p>Why this doctor registered and what the admin should keep in mind.</p>
+                  </div>
+                </div>
+                <p class="list-row" id="detail-notes"></p>
+                <div class="stats-grid">
+                  <div class="stat-chip"><span>Assigned admin</span><strong id="detail-assigned"></strong></div>
+                </div>
+              </article>
+
+              <article class="detail-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Status history</h3>
+                    <p>Audit-style timeline of account transitions and verification events.</p>
+                  </div>
+                </div>
+                <div class="timeline" id="detail-timeline"></div>
+              </article>
+            </div>
+          </section>
+        </main>
+      </section>
+    </div>
+
+    <script src="admin-data.js"></script>
+    <script src="admin-app.js"></script>
+  </body>
+</html>

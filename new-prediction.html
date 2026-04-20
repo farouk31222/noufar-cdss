@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NOUFAR CDSS | New Prediction</title>
+    <meta
+      name="description"
+      content="New hyperthyroidism relapse prediction workflow with manual clinical entry and Excel or CSV upload."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" href="assets/noufar-logo.png" />
+    <link rel="shortcut icon" href="assets/noufar-logo.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body class="app-body prediction-page-body">
+    <div class="app-layout">
+      <aside class="sidebar" aria-label="Primary">
+        <a class="sidebar-logo" href="dashboard.html" aria-label="NOUFAR CDSS dashboard">
+          <img class="sidebar-logo-image" src="assets/noufar-logo.png" alt="NOUFAR CDSS logo" />
+          <span class="sidebar-logo-copy">
+            <strong>NOUFAR</strong>
+            <small>CDSS</small>
+          </span>
+        </a>
+
+        <nav class="sidebar-nav">
+          <a class="sidebar-link" href="dashboard.html">
+            <img class="sidebar-icon-image" src="assets/sidebar-dashboard-icon.png" alt="" aria-hidden="true" />
+            <span>Dashboard</span>
+          </a>
+          <a class="sidebar-link active" href="new-prediction.html">
+            <img class="sidebar-icon-image" src="assets/sidebar-plus-icon.png" alt="" aria-hidden="true" />
+            <span>New Prediction</span>
+          </a>
+          <a class="sidebar-link" href="#" data-coming-soon-trigger="Patients">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 11a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Zm-6.5 8a6.5 6.5 0 0 1 13 0" />
+            </svg>
+            <span>Patients</span>
+          </a>
+          <a class="sidebar-link" href="#" data-coming-soon-trigger="Statistics">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19h16M7 16V8m5 8V5m5 11v-6" />
+            </svg>
+            <span>Statistics</span>
+          </a>
+        </nav>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <button class="mobile-nav-button" type="button" aria-expanded="false" aria-label="Toggle sidebar">
+            <span></span>
+            <span></span>
+          </button>
+
+          <div class="topbar-spacer"></div>
+
+          <div class="topbar-icons" aria-label="Toolbar">
+            <button class="icon-button" type="button" aria-label="Notifications">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3a4 4 0 0 0-4 4v2.3c0 .7-.2 1.39-.58 1.97L6 13.5h12l-1.42-2.23A3.7 3.7 0 0 1 16 9.3V7a4 4 0 0 0-4-4Zm-2 14a2 2 0 0 0 4 0" />
+              </svg>
+            </button>
+            <div class="profile-menu-shell">
+              <button
+                class="profile-trigger"
+                type="button"
+                aria-label="Open profile menu"
+                aria-expanded="false"
+                data-profile-toggle
+              >
+                <span class="profile-trigger-avatar">DC</span>
+              </button>
+
+              <section class="profile-menu-card" data-profile-menu hidden>
+                <div class="profile-menu-head">
+                  <div class="profile-menu-avatar">DC</div>
+                  <div class="profile-menu-copy">
+                    <strong>Dr. Clinical Lead</strong>
+                    <span>Endocrinology Unit</span>
+                  </div>
+                </div>
+
+                <nav class="profile-menu-links" aria-label="Profile menu">
+                  <a class="profile-menu-link" href="history.html">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M5 12a7 7 0 1 0 2-4.9M5 4v5h5" />
+                    </svg>
+                    <span>Prediction History</span>
+                  </a>
+                  <a class="profile-menu-link" href="account-settings.html">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 3.5-2.1.7a6.8 6.8 0 0 1-.5 1.3l1.1 2-2 2-2-1.1a6.8 6.8 0 0 1-1.3.5L12 20l-1.2-2.1a6.8 6.8 0 0 1-1.3-.5l-2 1.1-2-2 1.1-2a6.8 6.8 0 0 1-.5-1.3L4 12l2.1-1.2a6.8 6.8 0 0 1 .5-1.3l-1.1-2 2-2 2 1.1a6.8 6.8 0 0 1 1.3-.5L12 4l1.2 2.1a6.8 6.8 0 0 1 1.3.5l2-1.1 2 2-1.1 2a6.8 6.8 0 0 1 .5 1.3L20 12Z" />
+                    </svg>
+                    <span>Account Settings</span>
+                  </a>
+                  <a class="profile-menu-link" href="index.html#support">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 12c0-4.42 3.58-8 8-8s8 3.58 8 8-3.58 8-8 8m0-4v.01M12 8a2.5 2.5 0 0 1 2.5 2.5c0 1.8-2.5 2.1-2.5 4" />
+                    </svg>
+                    <span>Support Center</span>
+                  </a>
+                </nav>
+
+                <div class="profile-menu-footer">
+                  <a class="profile-menu-link logout" href="index.html">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m10 17 5-5-5-5M15 12H4m7-8h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />
+                    </svg>
+                    <span>Logout</span>
+                  </a>
+                </div>
+              </section>
+            </div>
+          </div>
+        </header>
+
+        <main class="main-content" id="prediction-main">
+          <section class="surface-card prediction-page-hero">
+            <div class="prediction-page-hero-copy">
+              <span class="prediction-page-kicker">Clinical intelligence workspace</span>
+              <h1>New Prediction Workflow</h1>
+              <p>
+                Structure patient demographics, symptoms, biology, imaging, and treatment data in one clean
+                physician-ready interface before running the relapse prediction.
+              </p>
+              <div class="prediction-page-pills" aria-label="Workflow highlights">
+                <span class="dashboard-pill">Doctor-only workflow</span>
+                <span class="dashboard-pill">Manual and dataset entry</span>
+                <span class="dashboard-pill">Explainable clinical output</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="prediction-layout">
+            <div class="prediction-column">
+              <section class="surface-card prediction-form-card">
+                <div class="prediction-card-head">
+                  <div>
+                    <h1>Manual Clinical Entry</h1>
+                    <p>Enter clinical, biological, imaging, and treatment data for a new relapse prediction.</p>
+                  </div>
+                </div>
+
+                <form id="prediction-form" class="prediction-form">
+                  <div class="form-section">
+                    <div class="form-section-title">Patient Info</div>
+                    <div class="form-grid form-grid-2">
+                      <label class="field">
+                        <span>Name</span>
+                        <input type="text" name="name" placeholder="Patient full name" required />
+                      </label>
+                      <label class="field">
+                        <span>Age (17+)</span>
+                        <input type="number" name="age" min="17" max="100" placeholder="Years" required />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="form-section">
+                    <div class="form-section-title">Symptoms / Clinical</div>
+                    <div class="form-grid form-grid-2">
+                      <label class="field">
+                        <span>Consultation reason</span>
+                        <select name="consultationReason" required>
+                          <option value="">Select</option>
+                          <option value="DYSTHYROIDIE">DYSTHYROIDIE</option>
+                          <option value="Compression signs">Compression signs</option>
+                          <option value="Tumefaction">Tumefaction</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <div class="toggle-grid">
+                      <label class="toggle-field"><span>Stress</span><select name="stress"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Palpitations</span><select name="palpitations"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>SPP</span><select name="spp"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>AMG</span><select name="amg"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Diarrhea</span><select name="diarrhea"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Tremors</span><select name="tremors"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Agitation</span><select name="agitation"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Mood disorder</span><select name="moodDisorder"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Sleep disorder</span><select name="sleepDisorder"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Excess sweating</span><select name="sweating"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Heat intolerance</span><select name="heatIntolerance"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Muscle weakness</span><select name="muscleWeakness"><option>No</option><option>Yes</option></select></label>
+                    </div>
+                  </div>
+
+                  <div class="form-section">
+                    <div class="form-section-title">Thyroid Examination</div>
+                    <div class="form-grid form-grid-2">
+                      <label class="field">
+                        <span>Goiter</span>
+                        <select name="goiter">
+                          <option>No</option>
+                          <option>Yes</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Goiter classification</span>
+                        <select name="goiterClassification">
+                          <option value="">Select</option>
+                          <option>0</option>
+                          <option>1A</option>
+                          <option>1B</option>
+                          <option>2</option>
+                          <option>3</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="form-section">
+                    <div class="form-section-title">Biology</div>
+                    <div class="form-grid form-grid-3">
+                      <label class="field">
+                        <span>TSH</span>
+                        <input type="number" step="0.01" name="tsh" placeholder="mIU/L" />
+                      </label>
+                      <label class="field">
+                        <span>FT4</span>
+                        <input type="number" step="0.01" name="ft4" placeholder="numeric" />
+                      </label>
+                      <label class="field">
+                        <span>Anti-TPO</span>
+                        <select name="antiTpo">
+                          <option>Negative</option>
+                          <option>Positive</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Anti-TPO total</span>
+                        <input type="number" step="0.01" name="antiTpoTotal" placeholder="numeric" />
+                      </label>
+                      <label class="field">
+                        <span>Anti-Tg</span>
+                        <select name="antiTg">
+                          <option>Negative</option>
+                          <option>Positive</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>TSI</span>
+                        <select name="tsi">
+                          <option>Negative</option>
+                          <option>Positive</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>TSI level</span>
+                        <input type="number" step="0.01" name="tsiLevel" placeholder="numeric" />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="form-section">
+                    <div class="form-section-title">Imaging</div>
+                    <div class="form-grid form-grid-2">
+                      <label class="field">
+                        <span>Ultrasound</span>
+                        <select name="ultrasound">
+                          <option value="">Select</option>
+                          <option>Goiter</option>
+                          <option>Normal volume</option>
+                          <option>Goiter + nodules</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Scintigraphy</span>
+                        <select name="scintigraphy">
+                          <option value="">Select</option>
+                          <option>Normal uptake</option>
+                          <option>High uptake</option>
+                          <option>Hot nodule</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="form-section">
+                    <div class="form-section-title">Treatment</div>
+                    <div class="form-grid form-grid-2">
+                      <label class="field">
+                        <span>Therapy</span>
+                        <input type="text" name="therapy" placeholder="Treatment value" />
+                      </label>
+                      <label class="field">
+                        <span>Duration of treatment (3-96 months)</span>
+                        <input type="number" min="3" max="96" name="duration" placeholder="Months" />
+                      </label>
+                    </div>
+                    <div class="toggle-grid">
+                      <label class="toggle-field"><span>Block and replace</span><select name="blockReplace"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Surgery</span><select name="surgery"><option>No</option><option>Yes</option></select></label>
+                      <label class="toggle-field"><span>Radioactive iodine</span><select name="radioactiveIodine"><option>No</option><option>Yes</option></select></label>
+                    </div>
+                  </div>
+
+                  <div class="form-actions">
+                    <p class="form-helper">Doctor-only workflow. Demo prediction preview for UI testing.</p>
+                    <button class="btn btn-primary" type="submit">Run Prediction</button>
+                  </div>
+                </form>
+              </section>
+
+              <div class="import-divider"><span>OR BATCH IMPORT</span></div>
+
+              <section class="surface-card import-card">
+                <div class="prediction-card-head">
+                  <div>
+                    <h2>Data Import</h2>
+                    <p>Upload an Excel or CSV file to process a structured patient dataset.</p>
+                  </div>
+                </div>
+
+                <div class="import-layout">
+                  <div class="upload-dropzone" id="upload-dropzone">
+                    <div class="upload-icon">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 4v10m0-10 4 4m-4-4-4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
+                      </svg>
+                    </div>
+                    <strong>Upload Excel File</strong>
+                    <p class="upload-drop-hint" id="upload-drop-hint">Drag and drop your `.xlsx` or `.csv` file here.</p>
+                    <label class="btn btn-secondary btn-sm upload-button">
+                      <span id="upload-button-label">Browse Files</span>
+                      <input type="file" id="dataset-file" accept=".csv,.xlsx,.xls" hidden />
+                    </label>
+                    <small id="file-name">No file selected</small>
+                    <div class="upload-error" id="upload-error" hidden>
+                      Only `.csv`, `.xlsx`, or `.xls` files are supported.
+                    </div>
+                    <div class="upload-success" id="upload-success" hidden>
+                      <strong>File is ready</strong>
+                      <span id="upload-success-text">Your dataset is available for patient selection.</span>
+                    </div>
+                    <button class="btn btn-primary" id="choose-patient-button" type="button" hidden>
+                      Choose Patient and Run Prediction
+                    </button>
+                  </div>
+
+                  <div class="recent-upload-panel">
+                    <div class="field search-upload">
+                      <span>Select from Recent Uploads</span>
+                      <input type="search" id="recent-upload-search" placeholder="Search dataset..." />
+                    </div>
+                    <p class="section-note">Click a recent file to activate it for prediction.</p>
+
+                    <div class="recent-upload-list" id="recent-upload-list"></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <aside class="surface-card outcome-card" aria-live="polite">
+              <div class="outcome-title">Prediction Outcome</div>
+              <div class="outcome-state awaiting" id="outcome-state">
+                <div class="outcome-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 8v4m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3Z" />
+                  </svg>
+                </div>
+                <strong id="outcome-heading">Awaiting Data Input</strong>
+                <p id="outcome-text">Enter clinical parameters manually or upload a dataset to run the prediction model.</p>
+              </div>
+
+              <div class="outcome-details" id="outcome-details">
+                <div class="outcome-chip-row">
+                  <span class="prediction-badge" id="outcome-badge">Pending</span>
+                  <strong id="outcome-probability">0%</strong>
+                </div>
+                <div class="outcome-metric">
+                  <span>Estimated relapse probability</span>
+                  <div class="probability-bar large">
+                    <i id="outcome-bar" style="width:0%"></i>
+                  </div>
+                </div>
+                <div class="outcome-summary" id="outcome-summary"></div>
+                <div class="impact-section">
+                  <div class="impact-head">
+                    <span>Most impactful variables</span>
+                    <small>Patient-level explanation</small>
+                  </div>
+                  <div class="impact-list" id="impact-list">
+                    <div class="impact-empty" id="impact-empty">
+                      Run the prediction to view the most influential variables for this patient.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div class="modal-shell" id="consult-modal" hidden>
+      <div class="modal-backdrop" data-close-consult></div>
+      <div class="modal-card modal-card-wide">
+        <div class="modal-card-head">
+          <div>
+            <h2 id="consult-title">Dataset Preview</h2>
+            <p id="consult-meta">Structured patient data preview</p>
+          </div>
+          <button class="modal-close-button" type="button" data-close-consult aria-label="Close preview">
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+
+        <div class="table-shell modal-table-shell">
+          <table class="results-table modal-results-table">
+            <thead id="consult-head"></thead>
+            <tbody id="consult-body"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination-bar" id="consult-pagination" aria-label="Consult dataset pagination"></div>
+      </div>
+    </div>
+
+    <div class="modal-shell" id="delete-modal" hidden>
+      <div class="modal-backdrop" data-close-delete></div>
+      <div class="modal-card modal-card-compact">
+        <div class="modal-card-head">
+          <div>
+            <h2>Delete File</h2>
+            <p>Are you sure you want to delete this file?</p>
+          </div>
+        </div>
+
+        <div class="confirm-actions">
+          <button class="btn btn-secondary" type="button" data-close-delete>Cancel</button>
+          <button class="btn btn-primary" type="button" id="confirm-delete-button">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="modal-shell" id="coming-soon-modal" hidden aria-labelledby="coming-soon-title" aria-modal="true" role="dialog">
+      <div class="modal-backdrop" data-coming-soon-close></div>
+      <div class="modal-card modal-card-coming-soon">
+        <div class="modal-card-head coming-soon-head">
+          <div>
+            <h2 id="coming-soon-title">Coming Soon</h2>
+            <p id="coming-soon-copy">This NOUFAR CDSS workspace is currently being prepared for a future release.</p>
+          </div>
+          <button class="modal-close-button" type="button" aria-label="Close coming soon modal" data-coming-soon-close>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+
+        <div class="coming-soon-art" aria-hidden="true">
+          <div class="coming-soon-frame">
+            <strong>COMING SOON</strong>
+            <span>STAY TUNED</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="noufar-app.js"></script>
+    <script src="app-shell.js"></script>
+    <script src="new-prediction.js"></script>
+  </body>
+</html>

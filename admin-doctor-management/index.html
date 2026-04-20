@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NOUFAR Admin | Doctor Management</title>
+    <meta
+      name="description"
+      content="Admin dashboard for reviewing doctor registrations, support tickets, and physician account activity in NOUFAR CDSS."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" href="../assets/noufar-logo.png" />
+    <link rel="stylesheet" href="admin-styles.css" />
+  </head>
+  <body data-page="overview">
+    <div class="admin-shell">
+      <aside class="admin-sidebar">
+        <a class="sidebar-brand" href="index.html">
+          <img src="../assets/noufar-logo.png" alt="NOUFAR CDSS logo" />
+          <div class="sidebar-brand-copy">
+            <strong>NOUFAR Admin</strong>
+            <span>Doctor management console</span>
+          </div>
+        </a>
+
+        <nav class="sidebar-nav" aria-label="Primary">
+          <div class="sidebar-nav-group sidebar-nav-group-main">
+            <span class="sidebar-nav-label">Workspace</span>
+            <a class="sidebar-link active" href="index.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h7V4H4v8Zm9 8h7v-6h-7v6Zm0-16v8h7V4h-7ZM4 20h7v-6H4v6Z" /></svg>
+              <span>Overview</span>
+            </a>
+            <a class="sidebar-link" href="doctors.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Zm-6.5 8a6.5 6.5 0 0 1 13 0" /></svg>
+              <span>Doctors</span>
+            </a>
+            <a class="sidebar-link" href="support-center.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5m-7 6 2.2-2H18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2Z" /></svg>
+              <span>Support Center</span>
+            </a>
+          </div>
+        </nav>
+      </aside>
+
+      <section class="admin-workspace">
+        <header class="topbar">
+          <button class="topbar-toggle" type="button" aria-label="Toggle sidebar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+
+          <div class="topbar-title-block">
+            <span class="eyebrow">Admin console</span>
+            <h1>Doctor Management Overview</h1>
+          </div>
+
+          <label class="topbar-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" /></svg>
+            <input type="search" placeholder="Search doctor, ticket, specialty..." />
+          </label>
+
+          <div class="topbar-actions">
+            <button class="icon-button notification-trigger" type="button" aria-label="Doctor registration notifications">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a4 4 0 0 0-4 4v2.3c0 .7-.2 1.39-.58 1.97L6 13.5h12l-1.42-2.23A3.7 3.7 0 0 1 16 9.3V7a4 4 0 0 0-4-4Zm-2 14a2 2 0 0 0 4 0" /></svg>
+              <span class="notification-dot">4</span>
+            </button>
+            <button class="icon-button profile-trigger" type="button" aria-label="Admin profile">
+              <span class="topbar-profile-avatar">SA</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="admin-main admin-main-clean">
+          <section class="page-header-card page-header-card-simple">
+            <div class="page-header-copy">
+              <span class="hero-kicker">Admin overview</span>
+              <h2>Doctor management dashboard</h2>
+              <p>
+                Monitor registrations, approvals, active accounts, and physician support activity from one clear admin workspace built for fast daily review.
+              </p>
+            </div>
+          </section>
+
+          <section class="metrics-grid metrics-grid-overview">
+            <article class="metric-card metric-card-total">
+              <span class="metric-label">Total doctors</span>
+              <strong id="metric-total">0</strong>
+              <small>All physician accounts currently visible in the admin directory.</small>
+              <div class="metric-trend"><span style="width: 84%"></span></div>
+            </article>
+            <article class="metric-card metric-card-pending">
+              <span class="metric-label">Pending approvals</span>
+              <strong id="metric-pending">0</strong>
+              <small>Registrations waiting for admin document review and approval.</small>
+              <div class="metric-trend"><span style="width: 52%"></span></div>
+            </article>
+            <article class="metric-card metric-card-active">
+              <span class="metric-label">Active doctors</span>
+              <strong id="metric-active">0</strong>
+              <small>Approved physician accounts currently enabled on the platform.</small>
+              <div class="metric-trend"><span style="width: 76%"></span></div>
+            </article>
+            <article class="metric-card metric-card-tickets">
+              <span class="metric-label">Support tickets open</span>
+              <strong id="metric-tickets">0</strong>
+              <small>Doctor conversations currently requiring an admin reply or follow-up.</small>
+              <div class="metric-trend"><span style="width: 63%"></span></div>
+            </article>
+            <article class="metric-card metric-card-inactive">
+              <span class="metric-label">Inactive doctors</span>
+              <strong id="metric-inactive">0</strong>
+              <small>Doctors currently inactive after pause, rejection, or pending status.</small>
+              <div class="metric-trend"><span style="width: 41%"></span></div>
+            </article>
+            <article class="metric-card metric-card-rejected">
+              <span class="metric-label">Rejected doctors</span>
+              <strong id="metric-rejected">0</strong>
+              <small>Registrations rejected after review, usually pending resubmission.</small>
+              <div class="metric-trend"><span style="width: 26%"></span></div>
+            </article>
+            <article class="metric-card metric-card-compact metric-card-priority">
+              <span class="metric-label">Priority review</span>
+              <strong>2</strong>
+              <small>Doctors pending critical credential checks today.</small>
+            </article>
+            <article class="metric-card metric-card-compact metric-card-response">
+              <span class="metric-label">Response window</span>
+              <strong>3.2h</strong>
+              <small>Average admin response time across recent support requests.</small>
+            </article>
+          </section>
+
+          <section class="dashboard-grid dashboard-grid-clean">
+            <div class="main-stack">
+              <article class="content-card section-card" id="analytics-panel">
+                <div class="card-header">
+                  <div>
+                    <h3>Registration Activity</h3>
+                    <p>Monthly onboarding view to spot growth and workload concentration.</p>
+                  </div>
+                  <a class="link-action" href="doctors.html">Review queue</a>
+                </div>
+                <div class="chart-shell">
+                  <div class="line-chart-grid">
+                    <span></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                  <div class="line-chart" id="registration-line-chart"></div>
+                </div>
+                <div class="line-chart-labels" id="registration-labels"></div>
+              </article>
+
+              <article class="content-card section-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Recent Doctor Registrations</h3>
+                    <p>Latest doctors entering the verification and approval workflow.</p>
+                  </div>
+                  <a class="link-action" href="doctors.html">View all doctors</a>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Doctor</th>
+                        <th>Specialty</th>
+                        <th>Registration date</th>
+                        <th>Approval</th>
+                        <th>Account</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recent-registrations"></tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="content-card section-card" id="messages-panel">
+                <div class="card-header">
+                  <div>
+                    <h3>Recent Support Messages</h3>
+                    <p>Newest doctor conversations that may require triage or follow-up.</p>
+                  </div>
+                  <a class="link-action" href="support-center.html">Open inbox</a>
+                </div>
+                <div class="list-stack" id="recent-messages"></div>
+              </article>
+            </div>
+
+            <div class="side-stack-clean">
+              <article class="content-card section-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Performance Snapshot</h3>
+                    <p>Compact admin KPIs for approvals, activation quality, and support handling.</p>
+                  </div>
+                </div>
+                <div class="stats-grid">
+                  <div class="stat-chip">
+                    <span>Approval rate</span>
+                    <strong id="insight-approval-rate">0%</strong>
+                  </div>
+                  <div class="stat-chip">
+                    <span>Activation rate</span>
+                    <strong id="insight-activation-rate">0%</strong>
+                  </div>
+                  <div class="stat-chip">
+                    <span>Avg reply time</span>
+                    <strong id="insight-response-time">0h</strong>
+                  </div>
+                  <div class="stat-chip">
+                    <span>Audit log entries</span>
+                    <strong>12</strong>
+                  </div>
+                </div>
+              </article>
+
+              <article class="content-card section-card" id="audit-log-panel">
+                <div class="card-header">
+                  <div>
+                    <h3>Audit Log</h3>
+                    <p>Recent admin actions across approval, support, and account governance.</p>
+                  </div>
+                </div>
+                <div class="list-stack" id="audit-log-list"></div>
+              </article>
+            </div>
+          </section>
+        </main>
+      </section>
+    </div>
+
+    <script src="admin-data.js"></script>
+    <script src="admin-app.js"></script>
+  </body>
+</html>

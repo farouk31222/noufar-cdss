@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NOUFAR Admin | Support Center</title>
+    <meta name="description" content="Admin support inbox for doctor messages with status, priority, and conversation management." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/png" href="../assets/noufar-logo.png" />
+    <link rel="stylesheet" href="admin-styles.css" />
+  </head>
+  <body data-page="support">
+    <div class="admin-shell">
+      <aside class="admin-sidebar">
+        <a class="sidebar-brand" href="index.html">
+          <img src="../assets/noufar-logo.png" alt="NOUFAR CDSS logo" />
+          <div class="sidebar-brand-copy">
+            <strong>NOUFAR Admin</strong>
+            <span>Doctor management console</span>
+          </div>
+        </a>
+
+        <nav class="sidebar-nav" aria-label="Primary">
+          <div class="sidebar-nav-group sidebar-nav-group-main">
+            <span class="sidebar-nav-label">Workspace</span>
+            <a class="sidebar-link" href="index.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h7V4H4v8Zm9 8h7v-6h-7v6Zm0-16v8h7V4h-7ZM4 20h7v-6H4v6Z" /></svg>
+              <span>Overview</span>
+            </a>
+            <a class="sidebar-link" href="doctors.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Zm-6.5 8a6.5 6.5 0 0 1 13 0" /></svg>
+              <span>Doctors</span>
+            </a>
+            <a class="sidebar-link active" href="support-center.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5m-7 6 2.2-2H18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2Z" /></svg>
+              <span>Support Center</span>
+            </a>
+          </div>
+        </nav>
+      </aside>
+
+      <section class="admin-workspace">
+        <header class="topbar">
+          <button class="topbar-toggle" type="button" aria-label="Toggle sidebar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+
+          <div class="topbar-title-block">
+            <span class="eyebrow">Physician support</span>
+            <h1>Support Center Inbox</h1>
+          </div>
+
+          <label class="topbar-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" /></svg>
+            <input id="ticket-search" type="search" placeholder="Search doctor, ticket ID, topic..." />
+          </label>
+
+          <div class="topbar-actions">
+            <button class="icon-button notification-trigger" type="button" aria-label="Open inbox notifications">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a4 4 0 0 0-4 4v2.3c0 .7-.2 1.39-.58 1.97L6 13.5h12l-1.42-2.23A3.7 3.7 0 0 1 16 9.3V7a4 4 0 0 0-4-4Zm-2 14a2 2 0 0 0 4 0" /></svg>
+              <span class="notification-dot">3</span>
+            </button>
+            <button class="icon-button profile-trigger" type="button" aria-label="Admin profile">
+              <span class="topbar-profile-avatar">SA</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="admin-main admin-main-clean">
+          <section class="page-header-card page-header-card-simple">
+            <div class="page-header-copy">
+              <span class="hero-kicker">Doctor support operations</span>
+              <h2>Support center inbox</h2>
+              <p>Review physician conversations, reply quickly, and keep every support thread clearly tracked by status, priority, and recency.</p>
+            </div>
+          </section>
+
+          <section class="support-workspace">
+            <div class="support-inbox-column">
+              <article class="content-card section-card filter-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Inbox filters</h3>
+                    <p>Reduce noise and surface the conversations that need an admin answer first.</p>
+                  </div>
+                </div>
+                <div class="filters-bar filters-grid">
+                  <div class="filter-group">
+                    <label class="filter-label" for="ticket-status-filter">Ticket status</label>
+                    <select class="control" id="ticket-status-filter">
+                      <option value="all">All statuses</option>
+                      <option value="Open">Open</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                  </div>
+                  <div class="filter-group">
+                    <label class="filter-label" for="ticket-priority-filter">Priority</label>
+                    <select class="control" id="ticket-priority-filter">
+                      <option value="all">All priorities</option>
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </div>
+                  <div class="filter-group">
+                    <label class="filter-label" for="ticket-date-filter">Updated date</label>
+                    <select class="control" id="ticket-date-filter">
+                      <option value="all">All dates</option>
+                      <option value="7">Last 7 days</option>
+                      <option value="30">Last 30 days</option>
+                    </select>
+                  </div>
+                </div>
+              </article>
+
+              <article class="content-card section-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Doctor message inbox</h3>
+                    <p>All incoming physician support requests, sorted by urgency and latest updates.</p>
+                  </div>
+                </div>
+                <div class="ticket-list ticket-list-spacious" id="support-ticket-list"></div>
+              </article>
+            </div>
+
+            <div class="support-detail-column">
+              <article class="content-card section-card">
+                <div class="card-header">
+                  <div>
+                    <h3 id="ticket-subject">Ticket subject</h3>
+                    <p id="ticket-meta">Doctor and category</p>
+                  </div>
+                  <div class="action-row">
+                    <span id="ticket-status-badge"></span>
+                    <span id="ticket-priority-badge"></span>
+                  </div>
+                </div>
+                <div class="conversation conversation-shell" id="conversation-thread"></div>
+                <form class="reply-box reply-box-clean" id="reply-form">
+                  <label class="filter-label" for="reply-message">Admin reply</label>
+                  <textarea id="reply-message" placeholder="Write a clear reply to the doctor..."></textarea>
+                  <div class="action-row">
+                    <button class="btn btn-primary" type="submit">Send reply</button>
+                  </div>
+                </form>
+              </article>
+
+              <article class="content-card section-card ticket-controls-card">
+                <div class="card-header">
+                  <div>
+                    <h3>Ticket controls</h3>
+                    <p>Track ownership, update ticket state, and keep support activity governed.</p>
+                  </div>
+                </div>
+                <div class="stats-grid support-meta-grid">
+                  <div class="stat-chip"><span>Assigned admin</span><strong id="ticket-assigned">-</strong></div>
+                  <div class="stat-chip"><span>Created</span><strong id="ticket-created">-</strong></div>
+                  <div class="stat-chip"><span>Last updated</span><strong id="ticket-updated">-</strong></div>
+                </div>
+                <div class="reply-box reply-box-inline">
+                  <label class="filter-label" for="ticket-status-select">Ticket status</label>
+                  <select class="control" id="ticket-status-select">
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                  <button class="btn btn-secondary" type="button" id="resolve-toggle">Mark resolved</button>
+                </div>
+              </article>
+            </div>
+          </section>
+        </main>
+      </section>
+    </div>
+
+    <script src="admin-data.js"></script>
+    <script src="admin-app.js"></script>
+  </body>
+</html>
