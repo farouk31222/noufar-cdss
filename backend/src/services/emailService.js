@@ -1,6 +1,6 @@
 const nodemailer = require("nodemailer");
 
-let transporterPromise = null;
+let transporterPromise = null; // kept for legacy, no longer used
 
 const getMailerConfig = () => {
   const {
@@ -26,14 +26,13 @@ const getMailerConfig = () => {
 };
 
 const getTransporter = async () => {
-  if (transporterPromise) return transporterPromise;
-
   const config = getMailerConfig();
   if (!config.isConfigured) {
     throw new Error("SMTP settings are incomplete");
   }
 
-  transporterPromise = nodemailer.createTransport({
+  // Always create a fresh transporter to avoid stale Gmail connections
+  return nodemailer.createTransport({
     host: config.host,
     port: config.port,
     secure: config.secure,
@@ -41,9 +40,11 @@ const getTransporter = async () => {
       user: config.user,
       pass: config.pass,
     },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
-
-  return transporterPromise;
 };
 
 const buildDoctorApprovedEmail = (doctorName) => {
