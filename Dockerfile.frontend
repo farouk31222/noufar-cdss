@@ -14,4 +14,7 @@ RUN rm -rf /usr/share/nginx/html/backend \
            /usr/share/nginx/html/Dockerfile.frontend \
            /usr/share/nginx/html/README.md
 
+# Use custom nginx config to proxy /uploads/ and /api/ to backend
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 EXPOSE 80
