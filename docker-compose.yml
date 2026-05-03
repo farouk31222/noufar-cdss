@@ -1,0 +1,76 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────
+#  NOUFAR CDSS — Full Stack Docker Setup
+#  Run everything with:  docker compose up --build
+# ─────────────────────────────────────────────
+
+services:
+
+  # ── MongoDB Database ──────────────────────
+  mongo:
+    image: mongo:7
+    container_name: noufar-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  # ── Python Flask AI Server ────────────────
+  ai-server:
+    build:
+      context: ./ai-server
+      dockerfile: Dockerfile
+    container_name: noufar-ai
+    restart: unless-stopped
+    environment:
+      - PORT=5001
+    ports:
+      - "5001:5001"
+
+  # ── Node.js / Express Backend ─────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: noufar-backend
+    restart: unless-stopped
+    depends_on:
+      - mongo
+      - ai-server
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongo:27017/noufar_cdss
+      - FLASK_AI_URL=http://ai-server:5001
+      - NODE_ENV=production
+      # ⚠️  Replace these with your real secrets before running:
+      - JWT_SECRET=${JWT_SECRET:-change_me_to_a_strong_secret}
+      - ADMIN_REGISTRATION_KEY=${ADMIN_REGISTRATION_KEY:-change_me_to_a_strong_key}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+    ports:
+      - "5000:5000"
+    volumes:
+      - uploads_data:/app/uploads
+
+  # ── HTML/CSS/JS Frontend (nginx) ──────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: noufar-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+# ─── Persistent Volumes ───────────────────
+volumes:
+  mongo_data:
+  uploads_data:

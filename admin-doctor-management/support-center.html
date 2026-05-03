@@ -40,6 +40,10 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5m-7 6 2.2-2H18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2Z" /></svg>
               <span>Support Center</span>
             </a>
+            <a class="sidebar-link" href="system.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6.5 16V9m5 7V5m5 11v-6M4 8l4-3 4 3 4-3 4 3" /></svg>
+              <span>System</span>
+            </a>
           </div>
         </nav>
       </aside>
@@ -61,13 +65,13 @@
           </label>
 
           <div class="topbar-actions">
-            <button class="icon-button notification-trigger" type="button" aria-label="Open inbox notifications">
+            <a class="icon-button notification-trigger" href="#" aria-label="Open inbox notifications">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a4 4 0 0 0-4 4v2.3c0 .7-.2 1.39-.58 1.97L6 13.5h12l-1.42-2.23A3.7 3.7 0 0 1 16 9.3V7a4 4 0 0 0-4-4Zm-2 14a2 2 0 0 0 4 0" /></svg>
-              <span class="notification-dot">3</span>
-            </button>
-            <button class="icon-button profile-trigger" type="button" aria-label="Admin profile">
-              <span class="topbar-profile-avatar">SA</span>
-            </button>
+              <span class="notification-dot" hidden></span>
+            </a>
+            <a class="icon-button profile-trigger" href="login.html?logout=1" aria-label="Admin profile">
+              <img class="topbar-profile-avatar topbar-profile-image" src="../assets/Admin%20profileee.png" alt="Admin profile" />
+            </a>
           </div>
         </header>
 
@@ -104,9 +108,9 @@
                     <label class="filter-label" for="ticket-priority-filter">Priority</label>
                     <select class="control" id="ticket-priority-filter">
                       <option value="all">All priorities</option>
+                      <option value="Urgent">Urgent</option>
                       <option value="High">High</option>
-                      <option value="Medium">Medium</option>
-                      <option value="Low">Low</option>
+                      <option value="Routine">Routine</option>
                     </select>
                   </div>
                   <div class="filter-group">
@@ -120,14 +124,36 @@
                 </div>
               </article>
 
-              <article class="content-card section-card">
-                <div class="card-header">
+              <article class="content-card section-card admin-inbox-card">
+                <div class="admin-thread-panel-head">
                   <div>
                     <h3>Doctor message inbox</h3>
                     <p>All incoming physician support requests, sorted by urgency and latest updates.</p>
                   </div>
                 </div>
-                <div class="ticket-list ticket-list-spacious" id="support-ticket-list"></div>
+
+                <div class="admin-thread-list-shell">
+                  <div class="admin-thread-toolbar">
+                    <div class="admin-thread-toolbar-bottom">
+                      <label class="ticket-select-toggle admin-thread-select-all" for="admin-ticket-select-all">
+                        <input id="admin-ticket-select-all" type="checkbox" />
+                        <span>Select all</span>
+                      </label>
+                      <div class="ticket-list-toolbar-actions admin-thread-toolbar-actions">
+                        <button class="btn btn-secondary btn-compact" type="button" id="admin-delete-selected" disabled>
+                          Delete selected
+                        </button>
+                        <button class="btn btn-secondary btn-compact" type="button" id="admin-delete-all" disabled>
+                          Delete all
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="ticket-list-scroll admin-thread-scroll">
+                    <div class="ticket-list admin-thread-stack" id="support-ticket-list"></div>
+                  </div>
+                </div>
               </article>
             </div>
 
@@ -147,7 +173,18 @@
                 <form class="reply-box reply-box-clean" id="reply-form">
                   <label class="filter-label" for="reply-message">Admin reply</label>
                   <textarea id="reply-message" placeholder="Write a clear reply to the doctor..."></textarea>
-                  <div class="action-row">
+                  <div class="support-attachment-toolbar support-attachment-toolbar-admin">
+                    <label class="support-attachment-trigger support-attachment-trigger-admin" aria-label="Attach file">
+                      <input id="reply-file" type="file" hidden />
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 12.5v-5a3.5 3.5 0 1 1 7 0v8a5 5 0 1 1-10 0V8.8" /></svg>
+                      <span>Attach file</span>
+                    </label>
+                    <div class="support-attachment-selected support-attachment-selected-admin" id="reply-file-bar" hidden>
+                      <span id="reply-file-name"></span>
+                      <button class="support-attachment-clear support-attachment-clear-admin" id="reply-file-clear" type="button">Remove</button>
+                    </div>
+                  </div>
+                  <div class="action-row reply-action-row" id="reply-action-row" hidden>
                     <button class="btn btn-primary" type="submit">Send reply</button>
                   </div>
                 </form>
@@ -160,20 +197,30 @@
                     <p>Track ownership, update ticket state, and keep support activity governed.</p>
                   </div>
                 </div>
-                <div class="stats-grid support-meta-grid">
-                  <div class="stat-chip"><span>Assigned admin</span><strong id="ticket-assigned">-</strong></div>
-                  <div class="stat-chip"><span>Created</span><strong id="ticket-created">-</strong></div>
-                  <div class="stat-chip"><span>Last updated</span><strong id="ticket-updated">-</strong></div>
-                </div>
-                <div class="reply-box reply-box-inline">
-                  <label class="filter-label" for="ticket-status-select">Ticket status</label>
-                  <select class="control" id="ticket-status-select">
-                    <option value="Open">Open</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Resolved">Resolved</option>
-                    <option value="Closed">Closed</option>
-                  </select>
-                  <button class="btn btn-secondary" type="button" id="resolve-toggle">Mark resolved</button>
+                <div class="ticket-controls-stack">
+                  <div class="stats-grid support-meta-grid">
+                    <div class="stat-chip"><span>Assigned admin</span><strong id="ticket-assigned">-</strong></div>
+                    <div class="stat-chip"><span>Created</span><strong id="ticket-created">-</strong></div>
+                    <div class="stat-chip"><span>Last updated</span><strong id="ticket-updated">-</strong></div>
+                  </div>
+
+                  <div class="ticket-control-panel">
+                    <div class="ticket-control-copy">
+                      <span class="ticket-control-kicker">Workflow control</span>
+                      <strong>Update ticket lifecycle</strong>
+                      <p>Keep every support thread aligned with the current response stage and follow-up need.</p>
+                    </div>
+                    <div class="reply-box reply-box-inline">
+                      <label class="filter-label" for="ticket-status-select">Ticket status</label>
+                      <select class="control" id="ticket-status-select">
+                        <option value="Open">Open</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="Closed">Closed</option>
+                      </select>
+                      <button class="btn btn-secondary" type="button" id="resolve-toggle">Mark resolved</button>
+                    </div>
+                  </div>
                 </div>
               </article>
             </div>

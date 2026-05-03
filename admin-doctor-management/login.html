@@ -48,14 +48,23 @@
       </section>
 
       <section class="admin-auth-card">
-        <span class="hero-kicker">Admin sign in</span>
+        <span class="hero-kicker">Admin access</span>
         <h2>Access the admin dashboard</h2>
-        <p>Use the admin credentials below to enter the mock management console.</p>
+        <p>Sign in with an existing admin account or create a new one using the backend admin registration key.</p>
 
-        <form class="admin-auth-form" id="admin-login-form">
+        <div class="admin-auth-toggle" role="tablist" aria-label="Admin authentication mode">
+          <button class="admin-auth-tab is-active" type="button" id="admin-login-tab" data-auth-tab="login" aria-selected="true">
+            Login
+          </button>
+          <button class="admin-auth-tab" type="button" id="admin-register-tab" data-auth-tab="register" aria-selected="false">
+            Create account
+          </button>
+        </div>
+
+        <form class="admin-auth-form" id="admin-login-form" data-auth-panel="login">
           <div class="filter-group">
-            <label class="filter-label" for="admin-username">Username</label>
-            <input class="control" id="admin-username" name="username" type="text" placeholder="Enter admin username" autocomplete="username" />
+            <label class="filter-label" for="admin-username">Admin email</label>
+            <input class="control" id="admin-username" name="username" type="email" placeholder="admin@hospital.org" autocomplete="username" />
           </div>
 
           <div class="filter-group">
@@ -69,12 +78,35 @@
           </div>
         </form>
 
+        <form class="admin-auth-form" id="admin-register-form" data-auth-panel="register" hidden>
+          <div class="filter-group">
+            <label class="filter-label" for="admin-register-name">Full name</label>
+            <input class="control" id="admin-register-name" name="name" type="text" placeholder="Sarah Martin" autocomplete="name" />
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="admin-register-email">Admin email</label>
+            <input class="control" id="admin-register-email" name="email" type="email" placeholder="admin@hospital.org" autocomplete="email" />
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="admin-register-password">Password</label>
+            <input class="control" id="admin-register-password" name="password" type="password" placeholder="Create a password" autocomplete="new-password" />
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label" for="admin-register-key">Admin registration key</label>
+            <input class="control" id="admin-register-key" name="adminKey" type="password" placeholder="Enter admin registration key" autocomplete="off" />
+          </div>
+
+          <div class="admin-auth-actions">
+            <span class="admin-auth-error" id="admin-register-error"></span>
+            <button class="btn btn-primary" type="submit">Create admin account</button>
+          </div>
+        </form>
+
         <div class="admin-auth-helper">
-          Demo credentials:
-          <br />
-          Username: <strong>admin</strong>
-          <br />
-          Password: <strong>admin</strong>
+          Admin account creation requires the backend `ADMIN_REGISTRATION_KEY` configured in your server `.env` file.
         </div>
       </section>
     </div>

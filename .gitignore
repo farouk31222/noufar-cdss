@@ -3,3 +3,21 @@ Thumbs.db
 Desktop.ini
 *.tmp
 *.log
+
+# Environment variables - NEVER commit these (they contain passwords & secrets)
+.env
+.env.local
+.env.production
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Python
+*.egg-info/
+dist/
+build/

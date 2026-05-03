@@ -40,6 +40,10 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10h8M8 14h5m-7 6 2.2-2H18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2Z" /></svg>
               <span>Support Center</span>
             </a>
+            <a class="sidebar-link" href="system.html">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6.5 16V9m5 7V5m5 11v-6M4 8l4-3 4 3 4-3 4 3" /></svg>
+              <span>System</span>
+            </a>
           </div>
         </nav>
       </aside>
@@ -61,13 +65,13 @@
           </label>
 
           <div class="topbar-actions">
-            <button class="icon-button notification-trigger" type="button" aria-label="Doctor registration notifications">
+            <a class="icon-button notification-trigger" href="#" aria-label="Doctor registration notifications">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a4 4 0 0 0-4 4v2.3c0 .7-.2 1.39-.58 1.97L6 13.5h12l-1.42-2.23A3.7 3.7 0 0 1 16 9.3V7a4 4 0 0 0-4-4Zm-2 14a2 2 0 0 0 4 0" /></svg>
-              <span class="notification-dot">4</span>
-            </button>
-            <button class="icon-button profile-trigger" type="button" aria-label="Admin profile">
-              <span class="topbar-profile-avatar">SA</span>
-            </button>
+              <span class="notification-dot" hidden></span>
+            </a>
+            <a class="icon-button profile-trigger" href="login.html?logout=1" aria-label="Admin profile">
+              <img class="topbar-profile-avatar topbar-profile-image" src="../assets/Admin%20profileee.png" alt="Admin profile" />
+            </a>
           </div>
         </header>
 
@@ -104,7 +108,7 @@
                   <option value="all">All accounts</option>
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
-                  <option value="Suspended">Suspended</option>
+                  <option value="Deleted">Deleted</option>
                 </select>
               </div>
               <div class="filter-group">
@@ -138,7 +142,6 @@
                   <tr>
                     <th>Doctor name</th>
                     <th>Email</th>
-                    <th>Phone</th>
                     <th>Specialty</th>
                     <th>Registration date</th>
                     <th>Verification status</th>
@@ -148,6 +151,10 @@
                 </thead>
                 <tbody id="doctor-table-body"></tbody>
               </table>
+            </div>
+            <div class="table-footer table-footer-pagination">
+              <span class="table-summary" id="doctor-table-summary">Showing 0 doctors</span>
+              <div class="pagination" id="doctor-pagination" aria-label="Doctor accounts pagination"></div>
             </div>
           </section>
         </main>

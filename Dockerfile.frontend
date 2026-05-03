@@ -1,0 +1,17 @@
+# Frontend — nginx static file server
+FROM nginx:alpine
+
+# Copy all frontend files into nginx's web root
+COPY . /usr/share/nginx/html
+
+# Remove files that shouldn't be served publicly
+RUN rm -rf /usr/share/nginx/html/backend \
+           /usr/share/nginx/html/ai-server \
+           /usr/share/nginx/html/scripts \
+           /usr/share/nginx/html/.git \
+           /usr/share/nginx/html/.gitignore \
+           /usr/share/nginx/html/docker-compose.yml \
+           /usr/share/nginx/html/Dockerfile.frontend \
+           /usr/share/nginx/html/README.md
+
+EXPOSE 80

@@ -1,0 +1,172 @@
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
+
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+      minlength: 6,
+    },
+    passwordResetToken: {
+      type: String,
+      default: "",
+    },
+    passwordResetExpires: {
+      type: Date,
+      default: null,
+    },
+    twoStepCodeToken: {
+      type: String,
+      default: "",
+    },
+    twoStepCodeExpires: {
+      type: Date,
+      default: null,
+    },
+    twoStepChallengeToken: {
+      type: String,
+      default: "",
+    },
+    role: {
+      type: String,
+      enum: ["doctor", "admin"],
+      default: "doctor",
+    },
+    specialty: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    hospital: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    profilePhoto: {
+      type: String,
+      default: "",
+    },
+    twoStepEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    sessionTimeout: {
+      type: String,
+      enum: ["10 seconds", "30 minutes", "1 hour", "4 hours", "Never", "15 minutes", "60 minutes"],
+      default: "30 minutes",
+    },
+    termsAccepted: {
+      type: Boolean,
+      default: false,
+    },
+    submittedDocuments: [
+      {
+        label: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        fileName: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        filePath: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        mimeType: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+        fileSize: {
+          type: Number,
+          default: 0,
+        },
+        verified: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+    approvalStatus: {
+      type: String,
+      enum: ["Pending", "Approved", "Rejected"],
+      default: "Pending",
+    },
+    accountStatus: {
+      type: String,
+      enum: ["Active", "Inactive", "Deleted"],
+      default: "Inactive",
+    },
+    rejectionReason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    deactivationReason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    deletionReason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    assignedAdmin: {
+      type: String,
+      trim: true,
+      default: "Unassigned",
+    },
+    statusHistory: [
+      {
+        date: {
+          type: Date,
+          default: Date.now,
+        },
+        label: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        by: {
+          type: String,
+          default: "System",
+          trim: true,
+        },
+      },
+    ],
+  },
+  { timestamps: true }
+);
+
+userSchema.pre("save", async function savePassword() {
+  if (!this.isModified("password")) {
+    return;
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+userSchema.methods.matchPassword = async function matchPassword(enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
+};
+
+module.exports = mongoose.model("User", userSchema);
