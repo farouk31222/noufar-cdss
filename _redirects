@@ -1,0 +1,2 @@
+/api/* https://noufar-cdss-production.up.railway.app/api/:splat 200
+/uploads/* https://noufar-cdss-production.up.railway.app/uploads/:splat 200
