@@ -218,4 +218,12 @@ def health():
         {
             "status": "ok" if DEPLOYED_MODELS else "degraded",
             "tensorflow": TENSORFLOW_AVAILABLE,
- 
+            "deployedCount": len(DEPLOYED_MODELS),
+        }
+    )
+    return jsonify(payload)
+
+
+if __name__ == "__main__":
+    print(f"Deployed models: {', '.join(DEPLOYED_MODELS.keys()) or 'none'}")
+    app.run(host='0.0.0.0', port=5001, debug=False)

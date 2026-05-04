@@ -33,4 +33,4 @@ app.use("/api/support", supportRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-module.exports 
+module.exports = app;
