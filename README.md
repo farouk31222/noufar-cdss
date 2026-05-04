@@ -1,103 +1,88 @@
 # NOUFAR CDSS
 
-NOUFAR CDSS is a medical web application designed for doctors to support hyperthyroidism relapse prediction through a polished clinical workflow and an admin management console.
+A full-stack clinical decision support system for doctors managing hyperthyroidism relapse prediction. Built with Node.js, Python/Flask, MongoDB, and a machine learning inference engine.
 
-This repository currently contains a frontend prototype with:
+## What it does
 
-- a responsive product landing page
-- doctor-facing application screens
-- a modern admin dashboard for doctor management
-- mock data and UI interactions ready to connect to a backend later
+**Doctor-facing application**
+- Secure authentication with 2FA email verification
+- Dashboard with prediction history and patient overview
+- New prediction workflow with dataset upload and patient selection
+- AI-powered relapse prediction with explainability outputs
+- Account settings and notification management
 
-## Product Scope
-
-### Doctor-facing experience
-
-The doctor-facing side of the product includes:
-
-- landing page for the platform
-- authentication modals and account settings
-- dashboard overview
-- new prediction workflow
-- dataset upload and patient selection flow
-- prediction outcome panels
-- history and patient management pages
-
-### Admin experience
-
-The admin dashboard is built for managing doctors who register on the platform.
-
-It includes:
-
-- overview dashboard
-- doctors management
-- doctor details review
-- support center
-- admin login page
+**Admin console**
+- Doctor registration approval workflow
+- Doctor profile review and management
+- Support inbox
+- System monitoring
 
 ## Project Structure
 
-### Main application
+```
+noufar-cdss/
+├── frontend/                    # Static HTML/CSS/JS application
+│   ├── index.html               # Landing page
+│   ├── dashboard.html           # Doctor dashboard
+│   ├── new-prediction.html      # Prediction workflow
+│   ├── dataset-selection.html   # Patient selection from uploaded data
+│   ├── prediction-details.html  # Prediction results and explainability
+│   ├── history.html             # Results history
+│   ├── patients.html            # Patient directory
+│   ├── account-settings.html    # Account & notification settings
+│   ├── admin-doctor-management/ # Admin console
+│   └── assets/                  # Images, icons, media
+├── backend/                     # Node.js / Express API
+│   └── src/
+│       ├── routes/              # Auth, predictions, notifications, support
+│       ├── controllers/
+│       ├── models/              # MongoDB schemas
+│       └── services/            # Email, JWT, etc.
+├── ai-server/                   # Python / Flask ML inference server
+│   ├── app.py
+│   ├── model_registry.py
+│   └── pipeline_components.py
+├── scripts/                     # Model rebuild scripts
+├── docker-compose.yml           # Run everything locally with Docker
+├── Dockerfile.frontend          # nginx static server for local Docker
+└── nginx.conf                   # nginx config with API proxy
+```
 
-- `index.html` - landing page
-- `dashboard.html` - doctor dashboard
-- `new-prediction.html` - prediction workflow
-- `dataset-selection.html` - uploaded dataset patient selection
-- `history.html` - results history
-- `patients.html` - patient directory
-- `account-settings.html` - doctor account settings
-- `styles.css` - landing page styles
-- `dashboard.css` - doctor app shared styles
+## Tech Stack
 
-### Admin dashboard
+| Layer | Technology |
+|-------|-----------|
+| Frontend | HTML, CSS, JavaScript (vanilla) |
+| Backend | Node.js, Express, MongoDB (Mongoose) |
+| AI Server | Python, Flask, scikit-learn, TensorFlow |
+| Database | MongoDB |
+| Auth | JWT + 2FA email verification |
+| Email | Nodemailer / SMTP |
+| Local deployment | Docker Compose + nginx |
+| Cloud deployment | Railway (backend + AI server) |
 
-- `admin-doctor-management/login.html` - admin login
-- `admin-doctor-management/index.html` - admin overview
-- `admin-doctor-management/doctors.html` - doctors management
-- `admin-doctor-management/doctor-details.html` - doctor review details
-- `admin-doctor-management/support-center.html` - support inbox
-- `admin-doctor-management/admin-styles.css` - shared admin styles
-- `admin-doctor-management/admin-app.js` - admin interactions
-- `admin-doctor-management/admin-data.js` - admin mock data
+## Running Locally with Docker
 
-## Admin Demo Credentials
+See [SETUP-GUIDE.md](SETUP-GUIDE.md) for full step-by-step instructions.
 
-Use these credentials on the admin login page:
+**Quick start:**
+```bash
+# Clone the repo
+git clone https://github.com/farouk31222/noufar-cdss.git
+cd noufar-cdss
 
-- Username: `admin`
-- Password: `admin`
+# Create and fill in your .env
+cp backend/.env.example backend/.env
+# (edit backend/.env with your values)
 
-## Design Direction
+# Run everything
+docker compose up --build
+```
 
-The interface follows a polished medical SaaS direction with:
+Then open: **http://localhost:8080**
 
-- clean clinical layout logic
-- premium dark admin styling
-- modern responsive cards and tables
-- soft blue accents and glow treatment
-- reusable UI patterns for future API integration
-
-## Running The Project
-
-This project is currently static frontend code.
-
-To preview it locally, open the HTML files directly in a browser, starting with:
-
-- `index.html` for the public-facing experience
-- `admin-doctor-management/login.html` for the admin dashboard
-
-## Implementation Notes
-
-- Mock data is used across both the doctor and admin interfaces.
-- Interactive flows are implemented in plain HTML, CSS, and JavaScript.
-- The structure is intentionally kept simple so it can be connected later to a backend or API.
-
-## Next Steps
-
-Suggested next improvements:
-
-- connect doctor and admin flows to a real backend
-- store authentication and role-based access securely
-- persist uploaded datasets and prediction history
-- integrate model inference and real explainability outputs
-- add production deployment configuration
+| Service | URL |
+|---------|-----|
+| App | http://localhost:8080 |
+| Backend API | http://localhost:5000 |
+| AI Server 
