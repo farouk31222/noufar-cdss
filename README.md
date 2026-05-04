@@ -65,24 +65,27 @@ The AI inference engine runs a trained ensemble model (Random Forest + Logistic 
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    A[🌐 Browser\nfrontend/ HTML / CSS / JS] -->|HTTP| B
+
+    B["🔀 nginx :8080  ← local Docker\nor Express static  ← Railway"]
+
+    B -->|/api/*| C
+
+    C["⚙️ Node.js / Express API  :5000\nauth · predictions · notifications · support"]
+
+    C --> D["🗄️ MongoDB  :27017\nusers · history · datasets"]
+    C --> E["🤖 Flask AI Server  :5001\nRandom Forest · Logistic Regression · DNN\nprediction · explainability"]
 ```
-         Browser  (frontend/ HTML / CSS / JS)
-                          |
-                          | HTTP
-                          v
-             nginx :8080 (local Docker)
-          or Express static (Railway / direct)
-                          |
-                          | /api/*
-                          v
-              +---------------------------+
-              |   Node.js / Express API   |  :5000
-              |  auth, predictions,       |
-              |  notifications, support   |
-              +----------+----------------+
-                         |
-              +----------+----------+
-              |                     |
-              v                     v
-        +-----------+     +--------------------+
-        |  MongoDB  |     |  
+
+---
+
+## Project Structure
+
+```
+noufar-cdss/
+├── frontend/                        # Static web application
+│   ├── index.html                   # Landing page
+│   ├── dashboard.html               # Doctor dashboard
+│   ├── new-prediction.html          # Prediction 
