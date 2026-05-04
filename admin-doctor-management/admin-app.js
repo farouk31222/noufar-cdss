@@ -1071,7 +1071,7 @@
     }
 
     const fileName = document.file || document.fileName || "Unknown file";
-    const fileUrl = document.filePath ? `http://localhost:5000${document.filePath}` : "";
+    const fileUrl = document.filePath ? `${document.filePath}` : "";
     const isPdf = /pdf/i.test(document.mimeType) || /\.pdf$/i.test(fileName);
     const isImage = /^image\//i.test(document.mimeType) || /\.(png|jpe?g|webp)$/i.test(fileName);
     const previewClassName = `document-preview document-preview-clean${isImage ? " document-preview-image-layout" : ""}`;
@@ -2242,7 +2242,7 @@
       documents.innerHTML = doctor.submittedDocuments
         .map((document, index) => {
           const fileName = document.file || document.fileName || "Unknown file";
-          const fileUrl = document.filePath ? `http://localhost:5000${document.filePath}` : "";
+          const fileUrl = document.filePath ? `${document.filePath}` : "";
           const canCheck = Boolean(fileUrl);
 
           return `
