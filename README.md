@@ -1,88 +1,77 @@
+<div align="center">
+
 # NOUFAR CDSS
 
-A full-stack clinical decision support system for doctors managing hyperthyroidism relapse prediction. Built with Node.js, Python/Flask, MongoDB, and a machine learning inference engine.
+**Clinical Decision Support System for Hyperthyroidism Relapse Prediction**
 
-## What it does
+A full-stack medical web application built for doctors to run AI-powered relapse predictions, manage patients, and collaborate through a secure clinical workflow — with a complete admin management console.
 
-**Doctor-facing application**
-- Secure authentication with 2FA email verification
-- Dashboard with prediction history and patient overview
-- New prediction workflow with dataset upload and patient selection
-- AI-powered relapse prediction with explainability outputs
-- Account settings and notification management
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat&logo=mongodb&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![Railway](https://img.shields.io/badge/Railway-0B0D0E?style=flat&logo=railway&logoColor=white)
 
-**Admin console**
+</div>
+
+---
+
+## Overview
+
+NOUFAR CDSS is a full-stack clinical decision support platform with two distinct interfaces:
+
+- **Doctor App** — a secure, role-based clinical workflow for running and reviewing hyperthyroidism relapse predictions
+- **Admin Console** — a management dashboard for approving doctors, reviewing profiles, and handling support requests
+
+The AI inference engine runs a trained ensemble model (Random Forest + Logistic Regression + Deep Neural Network) with explainability outputs for each prediction.
+
+---
+
+## Features
+
+### Doctor Application
+- Landing page with platform presentation
+- Secure login with **JWT authentication** and **2FA email verification**
+- Dashboard with prediction history and patient statistics
+- Dataset upload and patient selection workflow
+- AI-powered relapse prediction with feature importance explainability
+- Prediction history and detailed result review
+- Patient directory management
+- Account settings and notification preferences
+
+### Admin Console
 - Doctor registration approval workflow
-- Doctor profile review and management
+- Full doctor profile review (documents, credentials)
+- Doctor account management
 - Support inbox
 - System monitoring
 
-## Project Structure
-
-```
-noufar-cdss/
-├── frontend/                    # Static HTML/CSS/JS application
-│   ├── index.html               # Landing page
-│   ├── dashboard.html           # Doctor dashboard
-│   ├── new-prediction.html      # Prediction workflow
-│   ├── dataset-selection.html   # Patient selection from uploaded data
-│   ├── prediction-details.html  # Prediction results and explainability
-│   ├── history.html             # Results history
-│   ├── patients.html            # Patient directory
-│   ├── account-settings.html    # Account & notification settings
-│   ├── admin-doctor-management/ # Admin console
-│   └── assets/                  # Images, icons, media
-├── backend/                     # Node.js / Express API
-│   └── src/
-│       ├── routes/              # Auth, predictions, notifications, support
-│       ├── controllers/
-│       ├── models/              # MongoDB schemas
-│       └── services/            # Email, JWT, etc.
-├── ai-server/                   # Python / Flask ML inference server
-│   ├── app.py
-│   ├── model_registry.py
-│   └── pipeline_components.py
-├── scripts/                     # Model rebuild scripts
-├── docker-compose.yml           # Run everything locally with Docker
-├── Dockerfile.frontend          # nginx static server for local Docker
-└── nginx.conf                   # nginx config with API proxy
-```
+---
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | HTML, CSS, JavaScript (vanilla) |
-| Backend | Node.js, Express, MongoDB (Mongoose) |
-| AI Server | Python, Flask, scikit-learn, TensorFlow |
-| Database | MongoDB |
-| Auth | JWT + 2FA email verification |
-| Email | Nodemailer / SMTP |
-| Local deployment | Docker Compose + nginx |
-| Cloud deployment | Railway (backend + AI server) |
+|-------|------------|
+| Frontend | HTML5, CSS3, JavaScript (vanilla) |
+| Backend API | Node.js, Express.js |
+| Database | MongoDB with Mongoose ODM |
+| AI / ML Server | Python, Flask, scikit-learn, TensorFlow |
+| Authentication | JWT + 2FA email verification |
+| Email | Nodemailer (SMTP) |
+| Local deployment | Docker Compose, nginx |
+| Cloud deployment | Railway |
 
-## Running Locally with Docker
+---
 
-See [SETUP-GUIDE.md](SETUP-GUIDE.md) for full step-by-step instructions.
+## Architecture
 
-**Quick start:**
-```bash
-# Clone the repo
-git clone https://github.com/farouk31222/noufar-cdss.git
-cd noufar-cdss
-
-# Create and fill in your .env
-cp backend/.env.example backend/.env
-# (edit backend/.env with your values)
-
-# Run everything
-docker compose up --build
 ```
-
-Then open: **http://localhost:8080**
-
-| Service | URL |
-|---------|-----|
-| App | http://localhost:8080 |
-| Backend API | http://localhost:5000 |
-| AI Server 
+┌─────────────────────────────────────────────────────────┐
+│                        Browser                          │
+│              frontend/ (HTML / CSS / JS)                │
+└────────────────────────┬────────────────────────────────┘
+                         │ HTTP
+              ┌──────────▼──────────┐
+              │   nginx (port 8080) │  ← local Docker
+              │   or Express static │  ← Railway / direct
+              └─────�
