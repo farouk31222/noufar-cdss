@@ -1,47 +1,25 @@
-const https = require("https");
+const nodemailer = require("nodemailer");
 
-// Send email via Resend API (HTTPS - works from any cloud server)
-const sendViaResend = async ({ to, subject, html, text }) => {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.SMTP_FROM || "NOUFAR CDSS <onboarding@resend.dev>";
-
-  if (!apiKey) {
-    throw new Error("RESEND_API_KEY is not configured");
-  }
-
-  const body = JSON.stringify({ from, to, subject, html, text });
-
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        hostname: "api.resend.com",
-        path: "/emails",
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(body),
-        },
-      },
-      (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(JSON.parse(data));
-          } else {
-            reject(new Error(`Resend API error ${res.statusCode}: ${data}`));
-          }
-        });
-      }
-    );
-    req.on("error", reject);
-    req.setTimeout(15000, () => {
-      req.destroy(new Error("Resend API request timed out"));
-    });
-    req.write(body);
-    req.end();
+const getTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || "smtp-relay.brevo.com",
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
   });
+};
+
+const sendViaResend = async ({ to, subject, html, text }) => {
+  const from = process.env.SMTP_FROM || "NOUFAR CDSS <noufar.cdss@gmail.com>";
+  const transporter = getTransporter();
+  await transporter.sendMail({ from, to, subject, html, text });
 };
 
 const buildDoctorApprovedEmail = (doctorName) => {
