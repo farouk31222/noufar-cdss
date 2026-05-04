@@ -1,25 +1,49 @@
 const nodemailer = require("nodemailer");
 
-const getTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp-relay.brevo.com",
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    tls: { rejectUnauthorized: false },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
-  });
+let transporterPromise = null;
+
+const getMailerConfig = () => {
+  const {
+    SMTP_HOST,
+    SMTP_PORT,
+    SMTP_SECURE,
+    SMTP_USER,
+    SMTP_PASS,
+    SMTP_FROM,
+  } = process.env;
+
+  const isConfigured = Boolean(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS && SMTP_FROM);
+
+  return {
+    isConfigured,
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT || 587),
+    secure: String(SMTP_SECURE).toLowerCase() === "true",
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+    from: SMTP_FROM,
+  };
 };
 
-const sendViaResend = async ({ to, subject, html, text }) => {
-  const from = process.env.SMTP_FROM || "NOUFAR CDSS <noufar.cdss@gmail.com>";
-  const transporter = getTransporter();
-  await transporter.sendMail({ from, to, subject, html, text });
+const getTransporter = async () => {
+  if (transporterPromise) return transporterPromise;
+
+  const config = getMailerConfig();
+  if (!config.isConfigured) {
+    throw new Error("SMTP settings are incomplete");
+  }
+
+  transporterPromise = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+  });
+
+  return transporterPromise;
 };
 
 const buildDoctorApprovedEmail = (doctorName) => {
@@ -57,16 +81,32 @@ NOUFAR CDSS`;
     </div>
   `;
 
-  return { subject: "Your NOUFAR CDSS account is now active", text, html };
+  return {
+    subject: "Your NOUFAR CDSS account is now active",
+    text,
+    html,
+  };
 };
 
 const sendDoctorApprovedEmail = async (doctor) => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn(`Approval email skipped for ${doctor.email}: RESEND_API_KEY not configured.`);
+  const config = getMailerConfig();
+
+  if (!config.isConfigured) {
+    console.warn(`Approval email skipped for ${doctor.email}: SMTP settings are incomplete.`);
     return { skipped: true };
   }
+
+  const transporter = await getTransporter();
   const email = buildDoctorApprovedEmail(doctor.name);
-  await sendViaResend({ to: doctor.email, ...email });
+
+  await transporter.sendMail({
+    from: config.from,
+    to: doctor.email,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+
   return { skipped: false };
 };
 
@@ -105,16 +145,32 @@ NOUFAR CDSS`;
     </div>
   `;
 
-  return { subject: "Your NOUFAR CDSS account has been activated", text, html };
+  return {
+    subject: "Your NOUFAR CDSS account has been activated",
+    text,
+    html,
+  };
 };
 
 const sendDoctorActivatedEmail = async (doctor) => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn(`Activation email skipped for ${doctor.email}: RESEND_API_KEY not configured.`);
+  const config = getMailerConfig();
+
+  if (!config.isConfigured) {
+    console.warn(`Activation email skipped for ${doctor.email}: SMTP settings are incomplete.`);
     return { skipped: true };
   }
+
+  const transporter = await getTransporter();
   const email = buildDoctorActivatedEmail(doctor.name);
-  await sendViaResend({ to: doctor.email, ...email });
+
+  await transporter.sendMail({
+    from: config.from,
+    to: doctor.email,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+
   return { skipped: false };
 };
 
@@ -157,16 +213,32 @@ NOUFAR CDSS`;
     </div>
   `;
 
-  return { subject: "Your NOUFAR CDSS verification code", text, html };
+  return {
+    subject: "Your NOUFAR CDSS verification code",
+    text,
+    html,
+  };
 };
 
 const sendTwoStepVerificationEmail = async (doctor, verificationCode) => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn(`2-step email skipped for ${doctor.email}: RESEND_API_KEY not configured.`);
+  const config = getMailerConfig();
+
+  if (!config.isConfigured) {
+    console.warn(`2-step verification email skipped for ${doctor.email}: SMTP settings are incomplete.`);
     return { skipped: true };
   }
+
+  const transporter = await getTransporter();
   const email = buildTwoStepVerificationEmail(doctor.name, verificationCode);
-  await sendViaResend({ to: doctor.email, ...email });
+
+  await transporter.sendMail({
+    from: config.from,
+    to: doctor.email,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+
   return { skipped: false };
 };
 
@@ -207,16 +279,32 @@ NOUFAR CDSS`;
     </div>
   `;
 
-  return { subject: "Your NOUFAR CDSS account has been deleted", text, html };
+  return {
+    subject: "Your NOUFAR CDSS account has been deleted",
+    text,
+    html,
+  };
 };
 
 const sendDoctorDeletedEmail = async (doctor, deletionReason) => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn(`Deletion email skipped for ${doctor.email}: RESEND_API_KEY not configured.`);
+  const config = getMailerConfig();
+
+  if (!config.isConfigured) {
+    console.warn(`Deletion email skipped for ${doctor.email}: SMTP settings are incomplete.`);
     return { skipped: true };
   }
+
+  const transporter = await getTransporter();
   const email = buildDoctorDeletedEmail(doctor.name, deletionReason);
-  await sendViaResend({ to: doctor.email, ...email });
+
+  await transporter.sendMail({
+    from: config.from,
+    to: doctor.email,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+
   return { skipped: false };
 };
 
@@ -257,16 +345,32 @@ NOUFAR CDSS`;
     </div>
   `;
 
-  return { subject: "Update on your NOUFAR CDSS account request", text, html };
+  return {
+    subject: "Update on your NOUFAR CDSS account request",
+    text,
+    html,
+  };
 };
 
 const sendDoctorRejectedEmail = async (doctor, rejectionReason) => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn(`Rejection email skipped for ${doctor.email}: RESEND_API_KEY not configured.`);
+  const config = getMailerConfig();
+
+  if (!config.isConfigured) {
+    console.warn(`Rejection email skipped for ${doctor.email}: SMTP settings are incomplete.`);
     return { skipped: true };
   }
+
+  const transporter = await getTransporter();
   const email = buildDoctorRejectedEmail(doctor.name, rejectionReason);
-  await sendViaResend({ to: doctor.email, ...email });
+
+  await transporter.sendMail({
+    from: config.from,
+    to: doctor.email,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+
   return { skipped: false };
 };
 
@@ -285,12 +389,14 @@ This reset link will expire in 1 hour.
 
 If you did not request this change, you can safely ignore this email.
 
+If you need assistance, please contact our support team at noufar.cdss@gmail.com.
+
 Best regards,
 NOUFAR CDSS`;
 
   const html = `
     <div style="margin:0;padding:32px;background:#f4f7fb;font-family:Arial,sans-serif;color:#1b2b4a;">
-      <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #dbe4f0;">
+      <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #dbe4f0;box-shadow:0 18px 36px rgba(15,39,64,0.08);">
         <div style="padding:28px 32px;background:linear-gradient(135deg,#0d4f90,#2f86e6);color:#ffffff;">
           <div style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.9;">NOUFAR CDSS</div>
           <h1 style="margin:12px 0 0;font-size:30px;line-height:1.2;">Password Reset</h1>
@@ -298,30 +404,57 @@ NOUFAR CDSS`;
         <div style="padding:32px;">
           <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Dear ${safeName},</p>
           <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">We received a request to reset your NOUFAR CDSS password.</p>
+          <p style="margin:0 0 22px;font-size:16px;line-height:1.7;">Use the secure button below to create your new password and return to the platform safely.</p>
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 26px;">
             <tr>
-              <td style="border-radius:16px;background:linear-gradient(135deg,#1b5fa5,#2f86e6);">
-                <a href="${safeLink}" style="display:block;padding:16px 28px;border-radius:16px;color:#ffffff;font-size:15px;font-weight:800;text-decoration:none;text-align:center;">Reset your password</a>
+              <td style="border-radius:16px;background:#2369a8;background-image:linear-gradient(135deg,#1b5fa5 0%,#2f86e6 100%);box-shadow:0 16px 28px rgba(30,94,167,0.24);">
+                <a href="${safeLink}" style="display:block;padding:16px 28px;border-radius:16px;color:#ffffff;font-size:15px;font-weight:800;line-height:1;text-decoration:none;text-align:center;white-space:nowrap;">Reset your password</a>
               </td>
             </tr>
           </table>
-          <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">This reset link will expire in 1 hour.</p>
+          <div style="margin:0 0 22px;padding:16px 18px;border-radius:18px;background:#f7fbff;border:1px solid #dce8f8;">
+            <div style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4b6d98;">Fallback link</div>
+            <div style="font-size:14px;line-height:1.7;word-break:break-word;">
+              <a href="${safeLink}" style="color:#1a5db1;text-decoration:none;font-family:'Courier New',monospace;">${safeLink}</a>
+            </div>
+          </div>
+          <div style="margin:0 0 22px;padding:16px 18px;border-radius:18px;background:#fff9f0;border:1px solid #f4dfb7;color:#7c5a14;">
+            <strong style="display:block;margin:0 0 6px;font-size:14px;">Security note</strong>
+            <span style="font-size:15px;line-height:1.7;">This reset link will expire in 1 hour. If you did not request this change, you can safely ignore this email.</span>
+          </div>
+          <p style="margin:0 0 22px;font-size:15px;line-height:1.7;color:#4f6781;">If you need assistance, please contact our support team at <a href="mailto:noufar.cdss@gmail.com" style="color:#1a5db1;font-weight:700;text-decoration:none;">noufar.cdss@gmail.com</a>.</p>
           <p style="margin:0;font-size:16px;line-height:1.7;">Best regards,<br /><strong>NOUFAR CDSS</strong></p>
         </div>
       </div>
     </div>
   `;
 
-  return { subject: "Reset your NOUFAR CDSS password", text, html };
+  return {
+    subject: "Reset your NOUFAR CDSS password",
+    text,
+    html,
+  };
 };
 
 const sendPasswordResetEmail = async (doctor, resetLink) => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn(`Password reset email skipped for ${doctor.email}: RESEND_API_KEY not configured.`);
+  const config = getMailerConfig();
+
+  if (!config.isConfigured) {
+    console.warn(`Password reset email skipped for ${doctor.email}: SMTP settings are incomplete.`);
     return { skipped: true };
   }
+
+  const transporter = await getTransporter();
   const email = buildPasswordResetEmail(doctor.name, resetLink);
-  await sendViaResend({ to: doctor.email, ...email });
+
+  await transporter.sendMail({
+    from: config.from,
+    to: doctor.email,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+
   return { skipped: false };
 };
 
