@@ -4,8 +4,10 @@ const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const patientRoutes = require("./routes/patientRoutes");
 const predictionRoutes = require("./routes/predictionRoutes");
 const supportRoutes = require("./routes/supportRoutes");
+const feedbackCaseRoutes = require("./routes/feedbackCaseRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -27,10 +29,13 @@ app.use(express.static(frontendRoot));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/patients", patientRoutes);
 app.use("/api/predictions", predictionRoutes);
 app.use("/api/support", supportRoutes);
+app.use("/api/feedback-cases", feedbackCaseRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
 
 module.exports = app;
+

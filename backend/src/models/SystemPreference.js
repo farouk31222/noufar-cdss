@@ -15,10 +15,15 @@ const systemPreferenceSchema = new mongoose.Schema(
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Admin",
       default: null,
     },
     updatedByName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    updatedReason: {
       type: String,
       trim: true,
       default: "",

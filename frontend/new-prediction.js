@@ -56,6 +56,129 @@ const predictionToggleInputs = Array.from(document.querySelectorAll(".toggle-swi
 const predictionRangeInputs = Array.from(document.querySelectorAll(".range-input"));
 const predictionChipSelectGroups = Array.from(document.querySelectorAll(".chip-select-group"));
 
+const initPredictionNotMeasuredOptions = () => {
+  predictionRangeInputs.forEach((input) => {
+    const shell = input.closest(".range-field-shell");
+    const field = input.closest(".slider-field");
+    const fieldLabel = field?.querySelector(":scope > span");
+    if (!shell || !fieldLabel || fieldLabel.querySelector(".range-not-measured")) return;
+
+    const wrapper = document.createElement("span");
+    wrapper.className = "range-not-measured range-not-measured-inline";
+    wrapper.innerHTML = `
+      <input type="checkbox" data-range-not-measured="${input.name}" />
+      <span class="range-not-measured-text">Not measured</span>
+    `;
+    fieldLabel.appendChild(wrapper);
+
+    const toggleButton = wrapper.querySelector(".range-not-measured-text");
+    const toggleInput = wrapper.querySelector(`[data-range-not-measured="${input.name}"]`);
+    const applyNotMeasuredState = (enabled) => {
+      input.dataset.notMeasured = enabled ? "true" : "false";
+      if (toggleInput instanceof HTMLInputElement) {
+        toggleInput.checked = enabled;
+      }
+      const target = document.getElementById(input.dataset.rangeTarget || "");
+      if (enabled) {
+        input.dataset.lastMeasuredValue = input.value;
+        input.disabled = true;
+        input.classList.add("is-not-measured");
+        if (target) target.textContent = "Not measured";
+      } else {
+        input.disabled = false;
+        input.classList.remove("is-not-measured");
+        if (input.dataset.lastMeasuredValue) {
+          input.value = input.dataset.lastMeasuredValue;
+        }
+        updateRangePresentation(input);
+      }
+    };
+
+    toggleButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const enabled = input.dataset.notMeasured !== "true";
+      applyNotMeasuredState(enabled);
+    });
+    toggleInput?.addEventListener("change", () => {
+      applyNotMeasuredState(Boolean(toggleInput.checked));
+    });
+
+    applyNotMeasuredState(false);
+  });
+};
+
+const commitPredictionRangeManualValue = (input, rawValue) => {
+  if (!input) return;
+
+  if (input.dataset.notMeasured === "true") {
+    showManualPredictionToast("Uncheck Not measured first to edit this value.", "danger");
+    return;
+  }
+
+  const min = Number(input.min || 0);
+  const max = Number(input.max || 100);
+  const step = Number(input.step || 1);
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed)) return;
+
+  const clamped = Math.min(max, Math.max(min, parsed));
+  const precision = String(step).includes(".") ? String(step).split(".")[1].length : 0;
+  const snapped = Number((Math.round(clamped / step) * step).toFixed(precision));
+  input.value = String(snapped);
+  input.dataset.touched = "true";
+  updateRangePresentation(input);
+  syncPredictionFieldState(input);
+  updatePredictionSubmitState();
+};
+
+const initPredictionManualRangeEditors = () => {
+  predictionRangeInputs.forEach((input) => {
+    const target = document.getElementById(input.dataset.rangeTarget || "");
+    if (!target || target.dataset.manualEditorBound === "true") return;
+
+    target.dataset.manualEditorBound = "true";
+    target.classList.add("range-value-display");
+    target.title = "Click to edit value";
+
+    target.addEventListener("click", () => {
+      if (input.dataset.notMeasured === "true") return;
+
+      const editor = document.createElement("input");
+      editor.type = "number";
+      editor.className = "range-value-editor";
+      editor.min = input.min || "0";
+      editor.max = input.max || "100";
+      editor.step = input.step || "1";
+      editor.value = String(input.value || target.textContent?.trim() || "");
+
+      target.replaceWith(editor);
+      editor.focus();
+      editor.select();
+
+      const finish = (accept) => {
+        editor.replaceWith(target);
+        if (accept) {
+          commitPredictionRangeManualValue(input, editor.value);
+        }
+      };
+
+      editor.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          finish(true);
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          finish(false);
+        }
+      });
+
+      editor.addEventListener("blur", () => finish(true), { once: true });
+    });
+  });
+};
+
 const {
   loadUploads,
   addUpload,
@@ -71,6 +194,8 @@ const {
 
 const predictionDoctorAuthStorageKey = "noufar-doctor-auth-v1";
 const predictionApiBaseUrl = window.NOUFAR_API_BASE_URL || "http://localhost:5000/api";
+const patientPredictionDraftStorageKey = "noufar-patient-clinical-draft-v1";
+const TRI_TOGGLE_STATES = ["Yes", "Not measured", "No"];
 
 let latestUploadId = null;
 let recentSearchTerm = "";
@@ -105,6 +230,72 @@ const getPredictionDoctorSession = () => {
 };
 
 const buildManualPredictionPayload = () => Object.fromEntries(buildPredictionFormData().entries());
+
+const normalizeTriToggleValue = (value) => {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "yes") return "Yes";
+  if (normalized === "no") return "No";
+  return "Not measured";
+};
+
+const setPredictionTriToggleState = (input, nextState) => {
+  const state = normalizeTriToggleValue(nextState);
+  input.dataset.triState = state;
+  input.value = state;
+  input.checked = state === "Yes";
+
+  const field = input.closest(".toggle-switch-field");
+  if (!field) return;
+
+  field.querySelectorAll(".tri-toggle-btn").forEach((button) => {
+    const isActive = button.dataset.stateValue === state;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+};
+
+const initPredictionTriStateToggles = () => {
+  predictionToggleInputs.forEach((input) => {
+    const field = input.closest(".toggle-switch-field");
+    const control = input.closest(".toggle-switch-control");
+    if (!field || !control || field.querySelector(".tri-toggle")) return;
+
+    field.classList.add("tri-toggle-field");
+
+    const tri = document.createElement("div");
+    tri.className = "tri-toggle";
+    tri.setAttribute("role", "group");
+    tri.innerHTML = `
+      <button type="button" class="tri-toggle-btn" data-state-value="Yes" aria-pressed="false">Yes</button>
+      <button type="button" class="tri-toggle-btn" data-state-value="Not measured" aria-pressed="false">Not measured</button>
+      <button type="button" class="tri-toggle-btn" data-state-value="No" aria-pressed="false">No</button>
+    `;
+    control.appendChild(tri);
+
+    tri.addEventListener("click", (event) => {
+      const button = event.target.closest(".tri-toggle-btn");
+      if (!button) return;
+      input.dataset.touched = "true";
+      setPredictionTriToggleState(input, button.dataset.stateValue);
+      syncPredictionFieldState(input);
+      updatePredictionSubmitState();
+    });
+
+    setPredictionTriToggleState(input, input.checked ? "Yes" : "Not measured");
+  });
+};
+
+const consumePatientPredictionDraft = () => {
+  try {
+    const raw = window.sessionStorage.getItem(patientPredictionDraftStorageKey);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(patientPredictionDraftStorageKey);
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    return null;
+  }
+};
 
 const setPredictionLoadingState = (isLoading) => {
   if (runPredictionButton) {
@@ -709,6 +900,7 @@ const syncPredictionFieldState = (field, force = false) => {
 
 const updateTogglePresentation = (input) => {
   if (!input) return;
+  if (input.dataset.triState) return;
   const valueLabel = input.closest(".toggle-switch-control")?.querySelector(".toggle-switch-value");
   if (valueLabel) {
     valueLabel.textContent = input.checked ? "Yes" : "No";
@@ -717,12 +909,19 @@ const updateTogglePresentation = (input) => {
 
 const updateRangePresentation = (input) => {
   if (!input) return;
+  const target = document.getElementById(input.dataset.rangeTarget || "");
+
+  if (input.dataset.notMeasured === "true") {
+    input.disabled = true;
+    input.classList.add("is-not-measured");
+    if (target) target.textContent = "Not measured";
+    return;
+  }
 
   const min = Number(input.min || 0);
   const max = Number(input.max || 100);
   const value = Number(input.value || min);
   const decimals = Number(input.dataset.rangeDecimals || 0);
-  const target = document.getElementById(input.dataset.rangeTarget || "");
   const progress = max > min ? ((value - min) / (max - min)) * 100 : 0;
 
   input.style.background = `linear-gradient(90deg, #2d71d3 0%, #63a8ff ${progress}%, rgba(68, 121, 196, 0.18) ${progress}%, rgba(150, 187, 239, 0.24) 100%)`;
@@ -761,9 +960,91 @@ const updatePredictionSubmitState = () => {
 const buildPredictionFormData = () => {
   const formData = new FormData(predictionForm);
   predictionToggleInputs.forEach((input) => {
-    formData.set(input.name, input.checked ? "Yes" : "No");
+    formData.set(input.name, normalizeTriToggleValue(input.dataset.triState || input.value));
+  });
+  predictionRangeInputs.forEach((input) => {
+    if (input.dataset.notMeasured === "true") {
+      formData.set(input.name, "Not measured");
+    }
   });
   return formData;
+};
+
+const applyPatientPredictionDraft = (draft) => {
+  if (!predictionForm || !draft || typeof draft !== "object") return;
+
+  Object.entries(draft).forEach(([name, rawValue]) => {
+    const field = predictionForm.elements.namedItem(name);
+    if (!field) return;
+
+    const value = rawValue ?? "";
+
+    if (field instanceof RadioNodeList) {
+      Array.from(field).forEach((input) => {
+        if (input instanceof HTMLInputElement) {
+          input.checked = String(input.value) === String(value);
+        }
+      });
+      return;
+    }
+
+    if (field instanceof HTMLInputElement) {
+      if (field.type === "checkbox") {
+        setPredictionTriToggleState(field, value);
+      } else {
+        field.value = String(value);
+      }
+      return;
+    }
+
+    if (field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
+      field.value = String(value);
+    }
+  });
+
+  predictionToggleInputs.forEach((input) => {
+    updateTogglePresentation(input);
+    syncPredictionFieldState(input);
+  });
+
+  predictionRangeInputs.forEach((input) => {
+    const markedNotMeasured = String(draft[input.name] ?? "").trim().toLowerCase() === "not measured";
+    const notMeasuredButton = predictionForm.querySelector(`[data-range-not-measured="${input.name}"]`);
+    if (notMeasuredButton instanceof HTMLInputElement) {
+      notMeasuredButton.checked = markedNotMeasured;
+      input.dataset.notMeasured = markedNotMeasured ? "true" : "false";
+      if (markedNotMeasured) {
+        input.disabled = true;
+        input.classList.add("is-not-measured");
+      } else {
+        input.disabled = false;
+        input.classList.remove("is-not-measured");
+      }
+    }
+    updateRangePresentation(input);
+    syncPredictionFieldState(input);
+  });
+
+  predictionChipSelectGroups.forEach((group) => {
+    const field = group.closest(".chip-select-field");
+    const hiddenInput = field?.querySelector('input[type="hidden"]');
+    const selectedValue = hiddenInput?.value;
+
+    Array.from(group.querySelectorAll(".chip-select-option")).forEach((button) => {
+      button.classList.toggle("is-selected", button.dataset.chipValue === selectedValue);
+    });
+  });
+
+  getPredictionValidatableFields().forEach((field) => {
+    syncPredictionFieldState(field);
+  });
+
+  updatePredictionSubmitState();
+  if (predictionFormNote) {
+    predictionFormNote.classList.remove("is-error");
+    predictionFormNote.textContent = "Patient clinical entry loaded. Review the data and run prediction when ready.";
+    predictionFormNote.classList.add("is-ready");
+  }
 };
 
 const buildPaginationItems = (currentPage, totalPages) => {
@@ -1245,12 +1526,16 @@ if (predictionForm) {
   });
 
   predictionToggleInputs.forEach(updateTogglePresentation);
+  initPredictionTriStateToggles();
   predictionRangeInputs.forEach((input) => {
     updateRangePresentation(input);
     input.addEventListener("input", () => updateRangePresentation(input));
     input.addEventListener("change", () => updateRangePresentation(input));
   });
+  initPredictionNotMeasuredOptions();
+  initPredictionManualRangeEditors();
   predictionChipSelectGroups.forEach(initializePredictionChipSelect);
+  applyPatientPredictionDraft(consumePatientPredictionDraft());
   updatePredictionSubmitState();
 
   predictionForm.addEventListener("submit", (event) => {

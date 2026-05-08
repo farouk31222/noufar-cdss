@@ -238,16 +238,9 @@ const getPredictionBadge = (entry) => {
     };
   }
 
-  if (entry.probability >= 70) {
-    return {
-      label: "High Risk Relapse",
-      tone: "relapse",
-    };
-  }
-
   return {
-    label: "Elevated Risk",
-    tone: "warning",
+    label: "High Risk Relapse",
+    tone: "relapse",
   };
 };
 

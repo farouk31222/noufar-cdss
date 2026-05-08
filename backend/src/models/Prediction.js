@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const predictionSchema = new mongoose.Schema(
   {
+    patientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Patient",
+      default: null,
+      index: true,
+    },
     patientName: {
       type: String,
       required: true,
@@ -64,6 +70,32 @@ const predictionSchema = new mongoose.Schema(
       trim: true,
       default: "LogisticRegression",
     },
+    selectedModelKey: {
+      type: String,
+      trim: true,
+      default: "logistic_regression",
+    },
+    selectionPolicy: {
+      type: String,
+      enum: ["manual", "auto_by_completeness"],
+      default: "manual",
+    },
+    completenessScore: {
+      type: Number,
+      min: 0,
+      max: 1,
+      default: 0,
+    },
+    completenessBucket: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    selectionReason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     topFactors: [
       {
         feature: {
@@ -118,5 +150,7 @@ const predictionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+predictionSchema.index({ patientId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Prediction", predictionSchema);

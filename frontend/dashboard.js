@@ -148,9 +148,10 @@ const renderDashboardRecentActivity = () => {
     row.innerHTML = `
       <td>${entry.id}</td>
       <td>${formatDate(entry.analyzedAt, true)}</td>
+      <td>${formatPredictedByDisplay(entry.predictedByName)}</td>
       <td><span class="prediction-badge ${badge.tone}">${badge.label}</span></td>
       <td>
-        <span class="probability-cell">
+        <span class="probability-cell ${entry.result === 'Relapse' ? 'prob-relapse' : 'prob-stable'}">
           <strong>${entry.probability}%</strong>
           <span class="probability-bar"><i style="width:${entry.probability}%"></i></span>
         </span>
@@ -184,7 +185,7 @@ const renderDashboardPriorityQueue = () => {
         </div>
         <span class="prediction-badge ${badge.tone}">${badge.label}</span>
       </div>
-      <span class="probability-cell">
+      <span class="probability-cell ${entry.result === 'Relapse' ? 'prob-relapse' : 'prob-stable'}">
         <strong>${entry.probability}%</strong>
         <span class="probability-bar"><i style="width:${entry.probability}%"></i></span>
       </span>
@@ -197,7 +198,7 @@ const renderDashboardError = (message) => {
   if (recentHost) {
     recentHost.innerHTML = `
       <tr>
-        <td colspan="5">
+        <td colspan="6">
           <div class="history-empty-state">
             <strong>Unable to load recent predictions</strong>
             <span>${message}</span>

@@ -5,6 +5,7 @@ const {
   listDoctorSupportTickets,
   markDoctorSupportTicketsRead,
   listAdminSupportTickets,
+  reviewAccessUpgradeRequest,
   updateSupportTicketStatus,
   replyToSupportTicket,
   markAdminSupportTicketsRead,
@@ -24,6 +25,7 @@ router.patch("/tickets/mine/read", protect, authorize("doctor"), markDoctorSuppo
 
 router.get("/admin/tickets", protect, authorize("admin"), listAdminSupportTickets);
 router.patch("/admin/tickets/read", protect, authorize("admin"), markAdminSupportTicketsRead);
+router.patch("/admin/tickets/:id/access-upgrade", protect, authorize("admin"), reviewAccessUpgradeRequest);
 router.patch("/admin/tickets/:id/status", protect, authorize("admin"), updateSupportTicketStatus);
 router.post(
   "/tickets/:id/reply",

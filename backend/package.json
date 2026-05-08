@@ -4,7 +4,10 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "migrate:prediction-patient-id": "node scripts/migratePredictionPatientIds.js",
+    "migrate:users-to-doctors": "node scripts/migrateUsersToDoctorsCollection.js",
+    "migrate:doctor-assigned-admin-id": "node scripts/backfillDoctorAssignedAdminId.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

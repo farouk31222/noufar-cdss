@@ -2,6 +2,10 @@ const SupportTicket = require("../models/SupportTicket");
 const User = require("../models/User");
 const { Notification, createNotification } = require("../services/notificationService");
 const { emitSupportTicketEvent } = require("../services/realtimeService");
+const {
+  sendDoctorAccessUpgradeApprovedEmail,
+  sendDoctorAccessUpgradeRefusedEmail,
+} = require("../services/emailService");
 const VALID_TICKET_STATUSES = new Set(["Open", "In Progress", "Resolved", "Closed"]);
 const buildSupportAttachment = (file) => {
   if (!file) return null;
@@ -111,6 +115,7 @@ const getAccessibleSupportTicket = async (ticketId, user) => {
 
 const buildTicketResponse = (ticket) => {
   const doctor = ticket.doctor && typeof ticket.doctor === "object" ? ticket.doctor : null;
+  const isAccessUpgradeTicket = String(ticket.category || "").trim() === "Access upgrade request";
 
   return {
     id: String(ticket._id),
@@ -135,6 +140,14 @@ const buildTicketResponse = (ticket) => {
     ),
     deletedByDoctor: Boolean(ticket.deletedByDoctor),
     deletedByAdmin: Boolean(ticket.deletedByAdmin),
+    accessUpgradeRequest: isAccessUpgradeTicket
+      ? {
+          decision: ticket.accessUpgradeRequest?.decision || "pending",
+          reviewedAt: ticket.accessUpgradeRequest?.reviewedAt || null,
+          reviewedBy: ticket.accessUpgradeRequest?.reviewedBy || "",
+          reviewedReason: ticket.accessUpgradeRequest?.reviewedReason || "",
+        }
+      : null,
     messages: ticket.messages.map((message) => ({
       id: String(message._id),
       senderId: String(message.senderId),
@@ -218,6 +231,12 @@ const createDoctorSupportTicket = async (req, res, next) => {
         }),
       ],
       lastDoctorMessageAt: new Date(),
+      accessUpgradeRequest:
+        String(category).trim() === "Access upgrade request"
+          ? {
+              decision: "pending",
+            }
+          : undefined,
     });
 
     const populated = await SupportTicket.findById(ticket._id).populate(
@@ -256,6 +275,153 @@ const createDoctorSupportTicket = async (req, res, next) => {
     res.status(201).json({
       message: "Support request sent successfully.",
       ticket: buildTicketResponse(populated),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const reviewAccessUpgradeRequest = async (req, res, next) => {
+  try {
+    const ticket = await getAccessibleSupportTicket(req.params.id, req.user);
+    const decision = String(req.body?.decision || "").trim().toLowerCase();
+    const reason = normalizeSupportMessageText(req.body?.reason);
+    const actorName = req.user?.name || req.user?.email || "Admin";
+
+    if (String(ticket.category || "").trim() !== "Access upgrade request") {
+      res.status(400);
+      throw new Error("This ticket is not an access upgrade request");
+    }
+
+    if (!["approve", "refuse"].includes(decision)) {
+      res.status(400);
+      throw new Error("Decision must be approve or refuse");
+    }
+
+    const currentDecision = ticket.accessUpgradeRequest?.decision || "pending";
+    if (currentDecision !== "pending") {
+      res.status(400);
+      throw new Error("This access upgrade request has already been reviewed");
+    }
+
+    const doctor = await User.findById(ticket.doctor?._id || ticket.doctor);
+    if (!doctor || doctor.role !== "doctor") {
+      res.status(404);
+      throw new Error("Doctor account not found");
+    }
+
+    const approved = decision === "approve";
+    if (approved) {
+      doctor.doctorAccountType = "prediction";
+      await doctor.save();
+    }
+
+    ticket.assignedAdmin = actorName;
+    ticket.status = "Resolved";
+    ticket.accessUpgradeRequest = {
+      decision: approved ? "approved" : "refused",
+      reviewedAt: new Date(),
+      reviewedBy: actorName,
+      reviewedReason: reason || "",
+    };
+
+    const reviewMessage = approved
+      ? reason
+        ? `Access upgrade approved. ${reason}`
+        : "Access upgrade approved. This doctor account can now access Doctor with prediction workflows."
+      : reason
+        ? `Access upgrade refused. ${reason}`
+        : "Access upgrade refused. The doctor account remains in Standard doctor mode."
+      ;
+
+    ticket.messages.push(
+      createTicketMessage({
+        senderId: req.user._id,
+        senderRole: "admin",
+        senderName: actorName,
+        body: reviewMessage,
+        attachment: null,
+      })
+    );
+
+    ticket.lastAdminMessageAt = new Date();
+    ticket.messages.forEach((message) => {
+      if (message.senderRole === "doctor") {
+        message.readByAdmin = true;
+      }
+    });
+
+    await ticket.save();
+
+    let emailStatus = "sent";
+
+    try {
+      const emailResult = approved
+        ? await sendDoctorAccessUpgradeApprovedEmail(doctor, reason)
+        : await sendDoctorAccessUpgradeRefusedEmail(doctor, reason);
+      if (emailResult?.skipped) {
+        emailStatus = "skipped";
+      }
+    } catch (emailError) {
+      console.error(
+        `${approved ? "Access-upgrade approval" : "Access-upgrade refusal"} email failed for ${doctor.email}:`,
+        emailError.message
+      );
+      emailStatus = "failed";
+    }
+
+    await createNotification({
+      recipientUser: doctor._id,
+      recipientRole: "doctor",
+      actorUser: req.user._id,
+      actorName,
+      type: approved ? "access-upgrade-approved" : "access-upgrade-refused",
+      title: ticket.subject,
+      message: approved
+        ? "Your request for Doctor with prediction access has been approved."
+        : "Your request for Doctor with prediction access has been refused.",
+      targetType: "support-ticket",
+      targetId: ticket._id,
+      targetUrl: `support-ticket:${ticket._id}`,
+      metadata: {
+        ticketId: String(ticket._id),
+        doctorId: String(doctor._id),
+        doctorName: doctor.name,
+        category: ticket.category,
+        decision: ticket.accessUpgradeRequest.decision,
+      },
+    });
+
+    emitSupportTicketEvent({
+      ticketId: ticket._id,
+      doctorId: doctor._id,
+      action: "access-upgrade-reviewed",
+      actorRole: "admin",
+    });
+
+    const refreshedTicket = await SupportTicket.findById(ticket._id).populate(
+      "doctor",
+      "name email specialty hospital"
+    );
+
+    res.status(200).json({
+      message: approved
+        ? emailStatus === "sent"
+          ? "Doctor access upgraded and email sent"
+          : emailStatus === "skipped"
+            ? "Doctor access upgraded but email sending is not configured"
+            : "Doctor access upgraded but email delivery failed"
+        : emailStatus === "sent"
+          ? "Doctor access request refused and email sent"
+          : emailStatus === "skipped"
+            ? "Doctor access request refused but email sending is not configured"
+            : "Doctor access request refused but email delivery failed",
+      ticket: buildTicketResponse(refreshedTicket),
+      doctor: {
+        id: String(doctor._id),
+        doctorAccountType: doctor.doctorAccountType,
+      },
+      emailStatus,
     });
   } catch (error) {
     next(error);
@@ -644,6 +810,7 @@ module.exports = {
   listDoctorSupportTickets,
   markDoctorSupportTicketsRead,
   listAdminSupportTickets,
+  reviewAccessUpgradeRequest,
   updateSupportTicketStatus,
   replyToSupportTicket,
   markAdminSupportTicketsRead,

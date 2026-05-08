@@ -62,49 +62,18 @@
     }
 
     const loginForm = document.getElementById("admin-login-form");
-    const registerForm = document.getElementById("admin-register-form");
-    const loginTab = document.getElementById("admin-login-tab");
-    const registerTab = document.getElementById("admin-register-tab");
     const username = document.getElementById("admin-username");
     const password = document.getElementById("admin-password");
     const loginError = document.getElementById("admin-login-error");
-    const registerError = document.getElementById("admin-register-error");
-    const registerName = document.getElementById("admin-register-name");
-    const registerEmail = document.getElementById("admin-register-email");
-    const registerPassword = document.getElementById("admin-register-password");
-    const registerKey = document.getElementById("admin-register-key");
 
     if (
       !loginForm ||
-      !registerForm ||
-      !loginTab ||
-      !registerTab ||
       !username ||
       !password ||
-      !loginError ||
-      !registerError ||
-      !registerName ||
-      !registerEmail ||
-      !registerPassword ||
-      !registerKey
+      !loginError
     ) {
       return;
     }
-
-    const showPanel = (mode) => {
-      const isLogin = mode === "login";
-      loginForm.hidden = !isLogin;
-      registerForm.hidden = isLogin;
-      loginTab.classList.toggle("is-active", isLogin);
-      registerTab.classList.toggle("is-active", !isLogin);
-      loginTab.setAttribute("aria-selected", String(isLogin));
-      registerTab.setAttribute("aria-selected", String(!isLogin));
-      loginError.textContent = "";
-      registerError.textContent = "";
-    };
-
-    loginTab.addEventListener("click", () => showPanel("login"));
-    registerTab.addEventListener("click", () => showPanel("register"));
 
     loginForm.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -114,7 +83,7 @@
       const passwordValue = password.value.trim();
 
       if (!emailValue || !passwordValue) {
-        loginError.textContent = "Enter your admin email and password.";
+        loginError.textContent = "Enter your admin login and password.";
         return;
       }
 
@@ -123,7 +92,8 @@
           method: "POST",
           body: JSON.stringify({
             email: emailValue,
-            password: passwordValue
+            password: passwordValue,
+            expectedRole: "admin"
           })
         });
 
@@ -136,41 +106,6 @@
         window.location.href = "index.html";
       } catch (requestError) {
         loginError.textContent = requestError.message || "Incorrect admin email or password.";
-      }
-    });
-
-    registerForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      registerError.textContent = "";
-
-      const payload = {
-        name: registerName.value.trim(),
-        email: registerEmail.value.trim(),
-        password: registerPassword.value.trim(),
-        role: "admin",
-        adminKey: registerKey.value.trim()
-      };
-
-      if (!payload.name || !payload.email || !payload.password || !payload.adminKey) {
-        registerError.textContent = "Complete all fields to create an admin account.";
-        return;
-      }
-
-      try {
-        const response = await requestJson("/auth/register", {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
-
-        if (response.role !== "admin") {
-          registerError.textContent = "The created account is not an admin account.";
-          return;
-        }
-
-        persistSession(response);
-        window.location.href = "index.html";
-      } catch (requestError) {
-        registerError.textContent = requestError.message || "Unable to create the admin account.";
       }
     });
   }

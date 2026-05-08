@@ -1,15 +1,111 @@
 const Prediction = require("../models/Prediction");
+const Patient = require("../models/Patient");
+const TrainingFeedbackCase = require("../models/TrainingFeedbackCase");
 const { getPredictionModelCatalog, requestPrediction } = require("../services/aiPredictionService");
 const {
   getActivePredictionModel,
   getPredictionModelOptions,
+  getPredictionSelectionPolicy,
+  setPredictionSelectionPolicy,
   setActivePredictionModel,
 } = require("../services/predictionModelService");
+const {
+  SUPPORTED_POLICIES,
+  selectModelByCompleteness,
+  resolveSelectionPolicy,
+} = require("../services/modelSelectionService");
+const { upsertDoctorValidatedFeedbackCase } = require("../services/trainingFeedbackService");
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const resolveOrCreatePatient = async ({
+  patientId = null,
+  patientName = "",
+  age = 0,
+  sex = "Not specified",
+  consultationReason = "",
+  duration = 0,
+  inputData = {},
+  predictedBy = null,
+  predictedByName = "",
+  createdAt = new Date(),
+  updatedAt = null,
+} = {}) => {
+  if (patientId) {
+    const byId = await Patient.findById(patientId).select("_id patientName");
+    if (byId) return byId;
+  }
+
+  const normalizedPatientName = String(patientName || "").trim();
+  if (!normalizedPatientName) return null;
+
+  const existingPatient = await Patient.findOne({
+    patientName: {
+      $regex: `^${escapeRegex(normalizedPatientName)}$`,
+      $options: "i",
+    },
+  }).select("_id patientName");
+
+  if (existingPatient) {
+    return existingPatient;
+  }
+
+  const createdPatient = await Patient.create({
+    patientName: normalizedPatientName,
+    age: Number(age) || 0,
+    sex: String(sex || "Not specified").trim() || "Not specified",
+    consultationReason: String(consultationReason || "").trim(),
+    duration: Number(duration) || 0,
+    source: "Prediction History",
+    inputData: inputData || {},
+    savedBy: predictedBy || null,
+    savedByName: predictedByName || "",
+    createdAt,
+    updatedAt: updatedAt || createdAt,
+  });
+
+  return createdPatient;
+};
+
+const ensurePatientRegistryEntry = async (prediction) => {
+  const patientName = String(prediction?.patientName || "").trim();
+  if (!patientName) return;
+
+  const patient = await resolveOrCreatePatient({
+    patientId: prediction.patientId || null,
+    patientName,
+    age: prediction.age,
+    sex: prediction.sex,
+    consultationReason: prediction.consultationReason,
+    duration: prediction.duration,
+    inputData: prediction.inputData || {},
+    predictedBy: prediction.predictedBy || null,
+    predictedByName: prediction.predictedByName || "",
+    createdAt: prediction.createdAt,
+    updatedAt: prediction.updatedAt || prediction.createdAt,
+  });
+
+  if (patient && (!prediction.patientId || String(prediction.patientId) !== String(patient._id))) {
+    prediction.patientId = patient._id;
+    await prediction.save();
+  }
+};
+
+const ensurePredictionAccess = (req, res) => {
+  const isStandardDoctor =
+    req.user?.role === "doctor" &&
+    (req.user?.doctorAccountType || "prediction") === "standard";
+
+  if (!isStandardDoctor) {
+    return;
+  }
+
+  res.status(403);
+  throw new Error("This doctor account can manage patients but cannot run or access prediction workflows.");
+};
 // charger toutes les prédictions
 const getPredictions = async (req, res, next) => {
   try {
+    ensurePredictionAccess(req, res);
     const predictions = await Prediction.find().sort({ createdAt: -1 });
     res.status(200).json(predictions);
   } catch (error) {
@@ -19,6 +115,7 @@ const getPredictions = async (req, res, next) => {
 // charger une prédiction par id pour ouvrir Prediction Details et afficher ses données
 const getPredictionById = async (req, res, next) => {
   try {
+    ensurePredictionAccess(req, res);
     const prediction = await Prediction.findById(req.params.id);
 
     if (!prediction) {
@@ -35,10 +132,12 @@ const getPredictionById = async (req, res, next) => {
 const getPredictionModels = async (req, res, next) => {
   try {
     const activeModel = await getActivePredictionModel();
+    const selectionPolicy = await getPredictionSelectionPolicy();
     const catalog = await getPredictionModelCatalog();
     res.status(200).json({
       activeModelKey: activeModel.key,
       activeModelLabel: activeModel.label,
+      selectionPolicy,
       options: (catalog?.options || getPredictionModelOptions()).map((option) => ({
         key: option.key,
         label: option.label,
@@ -55,19 +154,45 @@ const updateActivePredictionModel = async (req, res, next) => {
   try {
     const catalog = await getPredictionModelCatalog();
     const requestedModel = req.body?.modelKey;
-    const nextCatalogModel = (catalog?.options || []).find((option) => option.key === requestedModel);
+    const requestedPolicy = req.body?.selectionPolicy;
+    const updateReason = String(req.body?.reason || "").trim();
+    const performanceComparison = req.body?.performanceComparison || null;
+    const nextCatalogModel = requestedModel
+      ? (catalog?.options || []).find((option) => option.key === requestedModel)
+      : null;
 
     if (nextCatalogModel && nextCatalogModel.deployed === false) {
       res.status(400);
       throw new Error("This prediction model is not deployed on the AI service yet.");
     }
 
-    const activeModel = await setActivePredictionModel(requestedModel, req.user);
+    if (!requestedModel && !requestedPolicy) {
+      res.status(400);
+      throw new Error("Provide modelKey and/or selectionPolicy.");
+    }
+
+    if (requestedModel && performanceComparison && performanceComparison.metric === "f1") {
+      const candidateF1 = Number(performanceComparison?.candidateScore);
+      const currentF1 = Number(performanceComparison?.currentScore);
+      if (Number.isFinite(candidateF1) && Number.isFinite(currentF1) && candidateF1 <= currentF1) {
+        res.status(400);
+        throw new Error("Model promotion denied: candidate F1 score must be greater than current model F1 score.");
+      }
+    }
+
+    const activeModel = requestedModel
+      ? await setActivePredictionModel(requestedModel, req.user, updateReason)
+      : await getActivePredictionModel();
+    const selectionPolicy = requestedPolicy
+      ? await setPredictionSelectionPolicy(requestedPolicy, req.user, updateReason)
+      : await getPredictionSelectionPolicy();
 
     res.status(200).json({
       message: `${activeModel.label} is now the active prediction model.`,
       activeModelKey: activeModel.key,
       activeModelLabel: activeModel.label,
+      selectionPolicy,
+      updateReason,
       options: (catalog?.options || getPredictionModelOptions()).map((option) => ({
         key: option.key,
         label: option.label,
@@ -97,8 +222,49 @@ const ensureDeployedActiveModel = async () => {
   return activeModel;
 };
 
+const resolveRuntimeModelSelection = async (payload = {}, requestedPolicy = "") => {
+  const systemPolicy = await getPredictionSelectionPolicy();
+  const effectivePolicy = resolveSelectionPolicy(requestedPolicy, systemPolicy);
+
+  if (effectivePolicy === SUPPORTED_POLICIES.AUTO_BY_COMPLETENESS) {
+    const autoSelection = selectModelByCompleteness(payload);
+    const selectedModel = autoSelection.selectedModel;
+    const catalog = await getPredictionModelCatalog();
+    const catalogMatch = (catalog?.options || []).find((option) => option.key === selectedModel.key);
+
+    if (catalogMatch && catalogMatch.deployed === false) {
+      const fallbackModel = await ensureDeployedActiveModel();
+      return {
+        selectionPolicy: effectivePolicy,
+        selectedModel: fallbackModel,
+        completenessScore: autoSelection.completenessScore,
+        completenessBucket: autoSelection.completenessBucket,
+        selectionReason: `Auto selection fallback: model "${selectedModel.key}" not deployed, used active model "${fallbackModel.key}".`,
+      };
+    }
+
+    return {
+      selectionPolicy: effectivePolicy,
+      selectedModel,
+      completenessScore: autoSelection.completenessScore,
+      completenessBucket: autoSelection.completenessBucket,
+      selectionReason: autoSelection.selectionReason,
+    };
+  }
+
+  const activeModel = await ensureDeployedActiveModel();
+  return {
+    selectionPolicy: SUPPORTED_POLICIES.MANUAL,
+    selectedModel: activeModel,
+    completenessScore: null,
+    completenessBucket: "manual",
+    selectionReason: `Manual policy: active model "${activeModel.key}" used.`,
+  };
+};
+
 const createPrediction = async (req, res, next) => {
   try {
+    ensurePredictionAccess(req, res);
     const patientName = String(req.body?.name || "").trim();
     const consultationReason = String(req.body?.consultationReason || "").trim();
     const age = Number(req.body?.age);
@@ -109,19 +275,37 @@ const createPrediction = async (req, res, next) => {
       throw new Error("Name, age, and consultation reason are required.");
     }
 
-    const activeModel = await ensureDeployedActiveModel();
+    const patient = await resolveOrCreatePatient({
+      patientId: req.body?.patientId || null,
+      patientName,
+      age,
+      sex: req.body?.sex,
+      consultationReason,
+      duration: req.body?.duration,
+      inputData: req.body,
+      predictedBy: req.user?._id || null,
+      predictedByName: req.user?.name || req.user?.email || "",
+    });
+
+    const runtimeSelection = await resolveRuntimeModelSelection(req.body, req.body?.selectionPolicy);
+    const selectedModel = runtimeSelection.selectedModel;
     const aiResult = await requestPrediction(req.body, {
-      modelKey: activeModel.key,
-      modelLabel: activeModel.label,
+      modelKey: selectedModel.key,
+      modelLabel: selectedModel.label,
     });
     // pour vérifier les doublons
     const existingPrediction = await Prediction.findOne({
-      patientName: {
-        $regex: `^${escapeRegex(patientName)}$`,
-        $options: "i",
-      },
       source,
-    }).select("_id patientName age createdAt result probability");
+      $or: [
+        ...(patient?._id ? [{ patientId: patient._id }] : []),
+        {
+          patientName: {
+            $regex: `^${escapeRegex(patientName)}$`,
+            $options: "i",
+          },
+        },
+      ],
+    }).select("_id patientName age createdAt result probability patientId");
 
     if (existingPrediction) {
       return res.status(409).json({
@@ -134,6 +318,7 @@ const createPrediction = async (req, res, next) => {
     }
 
     const prediction = await Prediction.create({
+      patientId: patient?._id || null,
       patientName,
       age,
       sex: String(req.body?.sex || "Not specified").trim() || "Not specified",
@@ -145,16 +330,30 @@ const createPrediction = async (req, res, next) => {
       probability: aiResult.probabilityPercent,
       probabilityScore: aiResult.probabilityScore,
       riskLevel: aiResult.riskLevel,
-      modelName: aiResult.modelName || activeModel.label,
+      modelName: aiResult.modelName || selectedModel.label,
+      selectedModelKey: selectedModel.key,
+      selectionPolicy: runtimeSelection.selectionPolicy,
+      completenessScore:
+        typeof runtimeSelection.completenessScore === "number" ? runtimeSelection.completenessScore : undefined,
+      completenessBucket: runtimeSelection.completenessBucket,
+      selectionReason: runtimeSelection.selectionReason,
       topFactors: aiResult.topFactors,
       inputData: req.body,
       predictedBy: req.user?._id || null,
       predictedByName: req.user?.name || req.user?.email || "",
     });
 
+    await ensurePatientRegistryEntry(prediction);
+
     res.status(201).json({
       message: "Prediction created successfully.",
-      prediction,
+      prediction: {
+        id: prediction._id,
+        patientName: prediction.patientName,
+        age: prediction.age,
+        result: prediction.result,
+        probability: prediction.probability,
+      },
       displayResult: {
         patientName,
         consultationReason,
@@ -162,6 +361,14 @@ const createPrediction = async (req, res, next) => {
         probability: aiResult.probabilityPercent,
         relapse: aiResult.prediction === 1,
         contributions: aiResult.displayFactors,
+      },
+      modelSelection: {
+        selectionPolicy: runtimeSelection.selectionPolicy,
+        selectedModelKey: selectedModel.key,
+        selectedModelLabel: selectedModel.label,
+        completenessScore: runtimeSelection.completenessScore,
+        completenessBucket: runtimeSelection.completenessBucket,
+        selectionReason: runtimeSelection.selectionReason,
       },
     });
   } catch (error) {
@@ -174,6 +381,7 @@ const createPrediction = async (req, res, next) => {
 
 const updatePrediction = async (req, res, next) => {
   try {
+    ensurePredictionAccess(req, res);
     const prediction = await Prediction.findById(req.params.id);
 
     if (!prediction) {
@@ -194,13 +402,27 @@ const updatePrediction = async (req, res, next) => {
         throw new Error("Name, age, and consultation reason are required.");
       }
 
-      const activeModel = await ensureDeployedActiveModel();
+      const patient = await resolveOrCreatePatient({
+        patientId: prediction.patientId || updates.patientId || null,
+        patientName,
+        age,
+        sex: updates.sex || prediction.sex,
+        consultationReason,
+        duration: updates.duration,
+        inputData: updates,
+        predictedBy: req.user?._id || prediction.predictedBy || null,
+        predictedByName: req.user?.name || req.user?.email || prediction.predictedByName || "",
+      });
+
+      const runtimeSelection = await resolveRuntimeModelSelection(updates, updates?.selectionPolicy);
+      const selectedModel = runtimeSelection.selectedModel;
       const aiResult = await requestPrediction(updates, {
-        modelKey: activeModel.key,
-        modelLabel: activeModel.label,
+        modelKey: selectedModel.key,
+        modelLabel: selectedModel.label,
       });
 
       prediction.patientName = patientName;
+      prediction.patientId = patient?._id || prediction.patientId || null;
       prediction.age = age;
       prediction.sex = String(updates.sex || prediction.sex || "Not specified").trim() || "Not specified";
       prediction.consultationReason = consultationReason;
@@ -211,7 +433,14 @@ const updatePrediction = async (req, res, next) => {
       prediction.probability = aiResult.probabilityPercent;
       prediction.probabilityScore = aiResult.probabilityScore;
       prediction.riskLevel = aiResult.riskLevel;
-      prediction.modelName = aiResult.modelName || activeModel.label;
+      prediction.modelName = aiResult.modelName || selectedModel.label;
+      prediction.selectedModelKey = selectedModel.key;
+      prediction.selectionPolicy = runtimeSelection.selectionPolicy;
+      if (typeof runtimeSelection.completenessScore === "number") {
+        prediction.completenessScore = runtimeSelection.completenessScore;
+      }
+      prediction.completenessBucket = runtimeSelection.completenessBucket;
+      prediction.selectionReason = runtimeSelection.selectionReason;
       prediction.topFactors = aiResult.topFactors;
       prediction.inputData = updates;
       prediction.predictedBy = req.user?._id || prediction.predictedBy || null;
@@ -224,6 +453,13 @@ const updatePrediction = async (req, res, next) => {
       }
 
       await prediction.save();
+      await ensurePatientRegistryEntry(prediction);
+      if (prediction.actualOutcome) {
+        await upsertDoctorValidatedFeedbackCase({
+          prediction,
+          doctorUser: req.user,
+        });
+      }
       return res.status(200).json(prediction);
     }
 
@@ -244,6 +480,7 @@ const updatePrediction = async (req, res, next) => {
         prediction.validationRecordedAt = null;
         prediction.validatedBy = null;
         prediction.validatedByName = "";
+        await TrainingFeedbackCase.findOneAndDelete({ predictionId: prediction._id });
       } else {
         prediction.validationStatus = actualOutcome === prediction.result ? "Correct" : "Incorrect";
         prediction.validationRecordedAt = new Date();
@@ -257,6 +494,13 @@ const updatePrediction = async (req, res, next) => {
     Object.assign(prediction, updates);
     await prediction.save();
 
+    if (prediction.actualOutcome) {
+      await upsertDoctorValidatedFeedbackCase({
+        prediction,
+        doctorUser: req.user,
+      });
+    }
+
     res.status(200).json(prediction);
   } catch (error) {
     if (res.statusCode === 200) {
@@ -269,12 +513,15 @@ const updatePrediction = async (req, res, next) => {
 const deletePrediction = async (req, res, next) => {
   try {
     //  pour supprimer une prédiction
+    ensurePredictionAccess(req, res);
     const prediction = await Prediction.findByIdAndDelete(req.params.id);
 
     if (!prediction) {
       res.status(404);
       throw new Error("Prediction not found");
     }
+
+    await TrainingFeedbackCase.findOneAndDelete({ predictionId: prediction._id });
 
     res.status(200).json({ message: "Prediction deleted successfully" });
   } catch (error) {

@@ -374,6 +374,142 @@ const sendDoctorRejectedEmail = async (doctor, rejectionReason) => {
   return { skipped: false };
 };
 
+const buildDoctorAccessUpgradeApprovedEmail = (doctorName, note) => {
+  const safeName = doctorName?.trim() || "Doctor";
+  const safeNote = String(note || "").trim();
+
+  const text = `Dear ${safeName},
+
+Your request to upgrade your account to Doctor with prediction has been approved.
+
+You can now access prediction workflows in addition to managing patient clinical entries.
+
+${safeNote ? `Admin note:\n${safeNote}\n\n` : ""}If you need help, please contact noufar.cdss@gmail.com.
+
+Best regards,
+NOUFAR CDSS`;
+
+  const html = `
+    <div style="margin:0;padding:32px;background:#f4f7fb;font-family:Arial,sans-serif;color:#1b2b4a;">
+      <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #dbe4f0;">
+        <div style="padding:28px 32px;background:linear-gradient(135deg,#0d4f90,#2f86e6);color:#ffffff;">
+          <div style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.9;">NOUFAR CDSS</div>
+          <h1 style="margin:12px 0 0;font-size:28px;line-height:1.2;">Prediction Access Approved</h1>
+        </div>
+        <div style="padding:32px;">
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Dear ${safeName},</p>
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Your request to upgrade your account to <strong>Doctor with prediction</strong> has been approved.</p>
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">You can now access prediction workflows in addition to managing patient clinical entries.</p>
+          ${
+            safeNote
+              ? `<div style="margin:0 0 16px;padding:16px 18px;border-radius:16px;background:#f4f8ff;border:1px solid #d8e3f7;">
+                   <div style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#496b98;">Admin note</div>
+                   <div style="font-size:16px;line-height:1.7;color:#29456f;">${safeNote}</div>
+                 </div>`
+              : ""
+          }
+          <p style="margin:0;font-size:16px;line-height:1.7;">If you need assistance, please contact <a href="mailto:noufar.cdss@gmail.com" style="color:#1d5fb6;font-weight:700;text-decoration:none;">noufar.cdss@gmail.com</a>.</p>
+          <p style="margin:24px 0 0;font-size:16px;line-height:1.7;">Best regards,<br /><strong>NOUFAR CDSS</strong></p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return {
+    subject: "Your NOUFAR CDSS prediction access has been approved",
+    text,
+    html,
+  };
+};
+
+const sendDoctorAccessUpgradeApprovedEmail = async (doctor, note = "") => {
+  const config = getMailerConfig();
+
+  if (!config.isConfigured) {
+    console.warn(`Access-upgrade approval email skipped for ${doctor.email}: SMTP settings are incomplete.`);
+    return { skipped: true };
+  }
+
+  const transporter = await getTransporter();
+  const email = buildDoctorAccessUpgradeApprovedEmail(doctor.name, note);
+
+  await transporter.sendMail({
+    from: config.from,
+    to: doctor.email,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+
+  return { skipped: false };
+};
+
+const buildDoctorAccessUpgradeRefusedEmail = (doctorName, reason) => {
+  const safeName = doctorName?.trim() || "Doctor";
+  const safeReason = String(reason || "").trim() || "No additional reason was provided.";
+
+  const text = `Dear ${safeName},
+
+We regret to inform you that your request to upgrade your account to Doctor with prediction has been refused.
+
+Reason:
+${safeReason}
+
+If you need more information, please contact noufar.cdss@gmail.com.
+
+Best regards,
+NOUFAR CDSS`;
+
+  const html = `
+    <div style="margin:0;padding:32px;background:#f4f7fb;font-family:Arial,sans-serif;color:#1b2b4a;">
+      <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #dbe4f0;">
+        <div style="padding:28px 32px;background:linear-gradient(135deg,#8f2f2f,#d86b47);color:#ffffff;">
+          <div style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.9;">NOUFAR CDSS</div>
+          <h1 style="margin:12px 0 0;font-size:28px;line-height:1.2;">Prediction Access Refused</h1>
+        </div>
+        <div style="padding:32px;">
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">Dear ${safeName},</p>
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.7;">We regret to inform you that your request to upgrade your account to <strong>Doctor with prediction</strong> has been refused.</p>
+          <div style="margin:0 0 16px;padding:16px 18px;border-radius:16px;background:#fff6f3;border:1px solid #f0d2c8;">
+            <div style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a35536;">Reason</div>
+            <div style="font-size:16px;line-height:1.7;color:#5a2f1f;">${safeReason}</div>
+          </div>
+          <p style="margin:0;font-size:16px;line-height:1.7;">If you need more information, please contact <a href="mailto:noufar.cdss@gmail.com" style="color:#b05833;font-weight:700;text-decoration:none;">noufar.cdss@gmail.com</a>.</p>
+          <p style="margin:24px 0 0;font-size:16px;line-height:1.7;">Best regards,<br /><strong>NOUFAR CDSS</strong></p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return {
+    subject: "Update on your NOUFAR CDSS prediction access request",
+    text,
+    html,
+  };
+};
+
+const sendDoctorAccessUpgradeRefusedEmail = async (doctor, reason = "") => {
+  const config = getMailerConfig();
+
+  if (!config.isConfigured) {
+    console.warn(`Access-upgrade refusal email skipped for ${doctor.email}: SMTP settings are incomplete.`);
+    return { skipped: true };
+  }
+
+  const transporter = await getTransporter();
+  const email = buildDoctorAccessUpgradeRefusedEmail(doctor.name, reason);
+
+  await transporter.sendMail({
+    from: config.from,
+    to: doctor.email,
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+  });
+
+  return { skipped: false };
+};
+
 const buildPasswordResetEmail = (doctorName, resetLink) => {
   const safeName = doctorName?.trim() || "Doctor";
   const safeLink = String(resetLink || "");
@@ -460,6 +596,8 @@ const sendPasswordResetEmail = async (doctor, resetLink) => {
 
 module.exports = {
   sendDoctorApprovedEmail,
+  sendDoctorAccessUpgradeApprovedEmail,
+  sendDoctorAccessUpgradeRefusedEmail,
   sendDoctorActivatedEmail,
   sendDoctorDeletedEmail,
   sendDoctorRejectedEmail,

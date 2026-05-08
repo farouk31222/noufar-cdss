@@ -18,6 +18,7 @@ const {
   rejectDoctorAccount,
   deactivateDoctorAccount,
   activateDoctorAccount,
+  updateDoctorAccessType,
   deleteDoctorAccount,
 } = require("../controllers/authController");
 const { protect, authorize } = require("../middleware/authMiddleware");
@@ -46,6 +47,7 @@ router.patch("/admin/users/:id/approve", protect, authorize("admin"), approveDoc
 router.patch("/admin/users/:id/reject", protect, authorize("admin"), rejectDoctorAccount);
 router.patch("/admin/users/:id/deactivate", protect, authorize("admin"), deactivateDoctorAccount);
 router.patch("/admin/users/:id/activate", protect, authorize("admin"), activateDoctorAccount);
+router.patch("/admin/users/:id/access-type", protect, authorize("admin"), updateDoctorAccessType);
 router.patch("/admin/users/:id/delete", protect, authorize("admin"), deleteDoctorAccount);
 
 module.exports = router;

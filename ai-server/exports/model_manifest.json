@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-05-02T20:13:56.787500+00:00",
-  "trainingDataset": "data_synthetic_10K.csv",
+  "generatedAt": "2026-05-06T01:10:11.764203+00:00",
+  "trainingDataset": "data_synthetic_500.csv",
   "rawInferenceDataset": "data manule clean.xlsx",
   "featureNamesArtifact": "feature_names.pkl",
   "models": [
@@ -8,8 +8,8 @@
       "key": "logistic_regression",
       "label": "Logistic Regression",
       "status": "deployed",
-      "trainingDataset": "data_synthetic_10K.csv",
-      "trainingRows": 10000,
+      "trainingDataset": "data_synthetic_500.csv",
+      "trainingRows": 500,
       "hyperparameters": {
         "max_iter": 1000,
         "random_state": 42
@@ -24,8 +24,8 @@
       "key": "random_forest",
       "label": "Random Forest",
       "status": "deployed",
-      "trainingDataset": "data_synthetic_10K.csv",
-      "trainingRows": 10000,
+      "trainingDataset": "data_synthetic_500.csv",
+      "trainingRows": 500,
       "hyperparameters": {
         "n_estimators": 300,
         "random_state": 42,
@@ -39,8 +39,8 @@
       "key": "deep_neural_network",
       "label": "Deep Neural Network",
       "status": "deployed",
-      "trainingDataset": "data_synthetic_10K.csv",
-      "trainingRows": 10000,
+      "trainingDataset": "data_synthetic_500.csv",
+      "trainingRows": 500,
       "hyperparameters": {
         "layers": [
           64,

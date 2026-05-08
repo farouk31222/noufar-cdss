@@ -45,6 +45,11 @@ const userSchema = new mongoose.Schema(
       enum: ["doctor", "admin"],
       default: "doctor",
     },
+    doctorAccountType: {
+      type: String,
+      enum: ["standard", "prediction"],
+      default: "prediction",
+    },
     specialty: {
       type: String,
       trim: true,
@@ -134,6 +139,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: "Unassigned",
     },
+    assignedAdminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+      index: true,
+    },
     statusHistory: [
       {
         date: {
@@ -153,7 +164,10 @@ const userSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: "doctors",
+  }
 );
 
 userSchema.pre("save", async function savePassword() {

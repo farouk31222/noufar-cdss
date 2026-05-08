@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const Admin = require("../models/Admin");
 
 const getAuthenticatedUserFromToken = async (token) => {
   if (!token) {
@@ -9,12 +10,27 @@ const getAuthenticatedUserFromToken = async (token) => {
   }
 
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findById(decoded.id).select("-password");
+  let user = null;
+
+  if (decoded.actorType === "admin") {
+    user = await Admin.findById(decoded.id).select("-password");
+  } else if (decoded.actorType === "doctor") {
+    user = await User.findById(decoded.id).select("-password");
+  } else if (decoded.role === "admin") {
+    user = (await Admin.findById(decoded.id).select("-password"))
+      || (await User.findById(decoded.id).select("-password"));
+  } else {
+    user = await User.findById(decoded.id).select("-password");
+  }
 
   if (!user) {
     const error = new Error("Not authorized, user not found");
     error.statusCode = 401;
     throw error;
+  }
+
+  if (!user.role) {
+    user.role = decoded.role;
   }
 
   return user;

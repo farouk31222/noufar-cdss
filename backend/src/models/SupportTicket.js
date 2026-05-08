@@ -121,6 +121,27 @@ const supportTicketSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    accessUpgradeRequest: {
+      decision: {
+        type: String,
+        enum: ["pending", "approved", "refused"],
+        default: "pending",
+      },
+      reviewedAt: {
+        type: Date,
+        default: null,
+      },
+      reviewedBy: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      reviewedReason: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+    },
   },
   { timestamps: true }
 );

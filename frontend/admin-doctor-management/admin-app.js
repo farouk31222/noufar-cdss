@@ -4,6 +4,7 @@
   const UI_KEY = "noufar-admin-ui-v1";
   const API_BASE_URL = window.NOUFAR_API_BASE_URL || "http://localhost:5000/api";
   const DEFAULT_SYSTEM_MODEL = "Logistic Regression";
+  const DEFAULT_SELECTION_POLICY = "manual";
   const SYSTEM_MODEL_OPTIONS = [
     {
       key: "logistic_regression",
@@ -30,6 +31,7 @@
   let adminNotificationPollingStarted = false;
   let adminNotificationAudioArmed = false;
   let adminNotificationAudio = null;
+  let activeNotificationTab = "approval";
   let adminRealtimeSource = null;
   let adminRealtimeConnected = false;
   const ADMIN_FALLBACK_POLL_INTERVAL = 15000;
@@ -90,10 +92,18 @@
         : DEFAULT_SYSTEM_MODEL;
       return {
         sidebarCollapsed: Boolean(parsed.sidebarCollapsed),
-        systemModel: selectedModel
+        systemModel: selectedModel,
+        predictionSelectionPolicy:
+          parsed.predictionSelectionPolicy === "auto_by_completeness"
+            ? "auto_by_completeness"
+            : DEFAULT_SELECTION_POLICY,
       };
     } catch (error) {
-      return { sidebarCollapsed: false, systemModel: DEFAULT_SYSTEM_MODEL };
+      return {
+        sidebarCollapsed: false,
+        systemModel: DEFAULT_SYSTEM_MODEL,
+        predictionSelectionPolicy: DEFAULT_SELECTION_POLICY,
+      };
     }
   }
 
@@ -150,6 +160,20 @@
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      if (response.status === 401) {
+        const sessionExpired =
+          String(data.message || "").toLowerCase().includes("jwt expired") ||
+          String(data.message || "").toLowerCase().includes("token expired");
+        localStorage.removeItem(AUTH_KEY);
+        if (sessionExpired) {
+          window.location.href = "login.html?expired=1";
+          const error = new Error("Your admin session expired. Please sign in again.");
+          error.status = response.status;
+          error.payload = data;
+          throw error;
+        }
+      }
+
       const error = new Error(data.message || "Admin request failed");
       error.status = response.status;
       error.payload = data;
@@ -342,6 +366,7 @@
       lastName,
       name: user.name || `${firstName} ${lastName}`.trim(),
       email: user.email || "",
+      doctorAccountType: user.doctorAccountType === "standard" ? "standard" : "prediction",
       phone: user.phone || "Not provided",
       specialty: user.specialty || "Not specified",
       hospital: user.hospital || "Not provided",
@@ -475,6 +500,14 @@
       updatedAt: ticket.updatedAt,
       unreadByAdmin: Boolean(ticket.unreadByAdmin),
       unreadByDoctor: Boolean(ticket.unreadByDoctor),
+      accessUpgradeRequest: ticket.accessUpgradeRequest
+        ? {
+            decision: ticket.accessUpgradeRequest.decision || "pending",
+            reviewedAt: ticket.accessUpgradeRequest.reviewedAt || "",
+            reviewedBy: ticket.accessUpgradeRequest.reviewedBy || "",
+            reviewedReason: ticket.accessUpgradeRequest.reviewedReason || "",
+          }
+        : null,
       lastDoctorMessageAt: ticket.lastDoctorMessageAt,
       lastAdminMessageAt: ticket.lastAdminMessageAt,
       messages: Array.isArray(ticket.messages)
@@ -634,6 +667,21 @@
 
   function buildSystemModelOptions() {
     const selectedModel = getSelectedSystemModel();
+    const isManualPolicy =
+      (adminUi.predictionSelectionPolicy || DEFAULT_SELECTION_POLICY) === "manual";
+
+    if (!isManualPolicy) {
+      return `
+        <div class="system-model-auto-note">
+          <strong>Auto mode enabled</strong>
+          <p>
+            The system selects LR / RF / DNN automatically from form completeness.
+            Switch to <b>Manual</b> to choose one fixed active model.
+          </p>
+        </div>
+      `;
+    }
+
     return systemModelOptionsCache.map((option) => {
       const isActive = option.label === selectedModel;
       const isUnavailable = option.deployed === false;
@@ -649,18 +697,72 @@
     }).join("");
   }
 
+  function getSelectionPolicyLabel(policy) {
+    return policy === "auto_by_completeness" ? "Auto by completeness" : "Manual";
+  }
+
+  function getSelectionPolicyDescription(policy) {
+    return policy === "auto_by_completeness"
+      ? "Model is selected automatically from clinical form completeness."
+      : "Admin-selected active model is used for all predictions.";
+  }
+
+  function buildSystemSelectionPolicyOptions() {
+    const selectedPolicy =
+      adminUi.predictionSelectionPolicy === "auto_by_completeness"
+        ? "auto_by_completeness"
+        : "manual";
+
+    return [
+      {
+        key: "manual",
+        label: "Manual",
+        description: "Use the active model selected by admin.",
+      },
+      {
+        key: "auto_by_completeness",
+        label: "Auto by completeness",
+        description: "Auto-select LR / RF / DNN by form completeness.",
+      },
+    ]
+      .map((option) => {
+        const isActive = selectedPolicy === option.key;
+        return `
+          <button class="system-policy-option${isActive ? " is-active" : ""}" type="button" data-selection-policy="${option.key}">
+            <div>
+              <strong>${option.label}</strong>
+              <p>${option.description}</p>
+            </div>
+            <span class="system-model-option-state">${isActive ? "Selected" : "Select"}</span>
+          </button>
+        `;
+      })
+      .join("");
+  }
+
   function syncSystemModelUi() {
     const selectedModel = getSelectedSystemModel();
+    const selectedPolicy =
+      adminUi.predictionSelectionPolicy === "auto_by_completeness"
+        ? "auto_by_completeness"
+        : "manual";
+    const triggerDisplayLabel = selectedPolicy === "auto_by_completeness" ? "Auto" : selectedModel;
     const triggerLabel = document.getElementById("system-model-trigger-label");
     const activeModel = document.getElementById("system-active-model");
+    const policyPill = document.getElementById("system-selection-policy");
     const trigger = document.getElementById("system-model-trigger");
     const popover = document.getElementById("system-model-popover");
     const list = popover?.querySelector(".system-model-options");
+    const policyList = popover?.querySelector(".system-policy-options");
+    const policySummary = popover?.querySelector(".system-policy-summary");
 
-    if (triggerLabel) triggerLabel.textContent = selectedModel;
-    if (activeModel) activeModel.textContent = selectedModel;
-    if (trigger) trigger.setAttribute("aria-label", `Change model. Current model: ${selectedModel}`);
+    if (triggerLabel) triggerLabel.textContent = triggerDisplayLabel;
+    if (activeModel) activeModel.textContent = triggerDisplayLabel;
+    if (policyPill) policyPill.textContent = getSelectionPolicyLabel(selectedPolicy);
+    if (trigger) trigger.setAttribute("aria-label", `Change model. Current mode: ${triggerDisplayLabel}`);
     if (list) list.innerHTML = buildSystemModelOptions();
+    if (policyList) policyList.innerHTML = buildSystemSelectionPolicyOptions();
+    if (policySummary) policySummary.textContent = getSelectionPolicyDescription(selectedPolicy);
   }
 
   async function syncSystemModelFromBackend() {
@@ -675,6 +777,10 @@
     }));
 
     adminUi.systemModel = payload?.activeModelLabel || DEFAULT_SYSTEM_MODEL;
+    adminUi.predictionSelectionPolicy =
+      payload?.selectionPolicy === "auto_by_completeness"
+        ? "auto_by_completeness"
+        : DEFAULT_SELECTION_POLICY;
     persistUiState();
     syncSystemModelUi();
     return payload;
@@ -904,6 +1010,47 @@
     }
   }
 
+  async function updateDoctorAccessType(id, doctorAccountType) {
+    const doctor = getDoctorById(id);
+    if (!doctor) return false;
+
+    try {
+      const response = await requestAdminJson(`/auth/admin/users/${id}/access-type`, {
+        method: "PATCH",
+        body: JSON.stringify({ doctorAccountType }),
+      });
+
+      const updatedDoctor = response?.user ? mapBackendUserToDoctor(response.user) : null;
+      if (updatedDoctor) {
+        const index = state.doctors.findIndex((entry) => entry.id === id);
+        if (index > -1) {
+          state.doctors[index] = {
+            ...state.doctors[index],
+            ...updatedDoctor,
+          };
+        }
+      }
+
+      addAuditLog(
+        doctorAccountType === "prediction"
+          ? "Granted Doctor with prediction access"
+          : "Changed access to Standard doctor",
+        id
+      );
+      persistState();
+      showToast(
+        response?.message ||
+          (doctorAccountType === "prediction"
+            ? `${doctor.name} can now run predictions.`
+            : `${doctor.name} is now a Standard doctor.`)
+      );
+      return true;
+    } catch (error) {
+      showToast(error.message || "Unable to update this doctor's access.", "danger");
+      return false;
+    }
+  }
+
   async function deleteDoctor(id, reason) {
     const doctor = getDoctorById(id);
     if (!doctor) return false;
@@ -1001,6 +1148,50 @@
     throw new Error("Support reply could not be sent.");
   }
 
+  async function reviewAccessUpgrade(id, decision, reason = "") {
+    const response = await requestAdminJson(`/support/admin/tickets/${id}/access-upgrade`, {
+      method: "PATCH",
+      body: JSON.stringify({ decision, reason }),
+    });
+
+    if (response?.ticket) {
+      const nextTicket = mapBackendTicketToTicket(response.ticket);
+      const ticketIndex = state.tickets.findIndex((ticket) => ticket.id === id);
+      if (ticketIndex > -1) {
+        state.tickets[ticketIndex] = nextTicket;
+      } else {
+        state.tickets.unshift(nextTicket);
+      }
+
+      if (response?.doctor?.id) {
+        const doctorIndex = state.doctors.findIndex((doctor) => doctor.id === response.doctor.id);
+        if (doctorIndex > -1) {
+          state.doctors[doctorIndex] = {
+            ...state.doctors[doctorIndex],
+            doctorAccountType:
+              response.doctor.doctorAccountType === "standard" ? "standard" : "prediction",
+          };
+        }
+      }
+
+      addAuditLog(
+        decision === "approve" ? "Approved doctor prediction access request" : "Refused doctor prediction access request",
+        id
+      );
+      persistState();
+      showToast(
+        response?.message ||
+          (decision === "approve"
+            ? "Doctor access upgraded successfully."
+            : "Doctor access upgrade request refused."),
+        decision === "approve" ? "success" : "warning"
+      );
+      return nextTicket;
+    }
+
+    throw new Error("Access upgrade request could not be reviewed.");
+  }
+
   async function deleteSupportThread(id) {
     const response = await requestAdminJson(`/support/tickets/${id}`, {
       method: "DELETE",
@@ -1071,7 +1262,7 @@
     }
 
     const fileName = document.file || document.fileName || "Unknown file";
-    const fileUrl = document.filePath ? `${document.filePath}` : "";
+    const fileUrl = document.filePath ? `http://localhost:5000${document.filePath}` : "";
     const isPdf = /pdf/i.test(document.mimeType) || /\.pdf$/i.test(fileName);
     const isImage = /^image\//i.test(document.mimeType) || /\.(png|jpe?g|webp)$/i.test(fileName);
     const previewClassName = `document-preview document-preview-clean${isImage ? " document-preview-image-layout" : ""}`;
@@ -1568,6 +1759,12 @@
     return `<span class="badge ${slugifyBadge(value)}${neutralFallback ? " neutral" : ""}">${value}</span>`;
   }
 
+  function getDoctorRoleLabel(doctor) {
+    return doctor?.doctorAccountType === "standard"
+      ? "Standard doctor"
+      : "Doctor with prediction";
+  }
+
   function getSystemPredictionRecords() {
     const records =
       (systemPredictionsCache.length
@@ -2055,68 +2252,31 @@
       const pagedDoctors = filtered.slice(startIndex, startIndex + pageSize);
 
       body.innerHTML = pagedDoctors
-        .map((doctor) => {
-          const isDeletedAccount = doctor.accountStatus === "Deleted";
-          const approvalActions =
-            doctor.approvalStatus === "Pending" && !isDeletedAccount
-              ? `<button class="action-button primary" data-action="approve" data-id="${doctor.id}">Approve</button>`
-              : "";
-            const rejectAction =
-              doctor.approvalStatus === "Pending" && !isDeletedAccount
-                ? `<button class="action-button danger" data-action="reject" data-id="${doctor.id}">Reject</button>`
-                : "";
-            const accountAction =
-              doctor.approvalStatus === "Approved" && doctor.accountStatus === "Active" && !isDeletedAccount
-                ? `<button class="action-button warning" data-action="deactivate" data-id="${doctor.id}">Deactivate</button>`
-                : doctor.approvalStatus === "Approved" && !isDeletedAccount
-                  ? `<button class="action-button success" data-action="reactivate" data-id="${doctor.id}">Activate</button>`
-                  : "";
-          const deleteAction =
-            doctor.approvalStatus === "Approved" && !isDeletedAccount
-              ? `<button class="action-button danger icon-action-button" data-action="delete" data-id="${doctor.id}" aria-label="Delete doctor" title="Delete">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M9 3.75h6a1 1 0 0 1 1 1v1.25h3a.75.75 0 0 1 0 1.5h-1.05l-.82 11.04A2.25 2.25 0 0 1 14.89 20.75H9.11a2.25 2.25 0 0 1-2.24-2.21L6.05 7.5H5a.75.75 0 0 1 0-1.5h3V4.75a1 1 0 0 1 1-1Zm.5 2.25h5V5.25h-5V6Zm-1.95 1.5.82 10.93a.75.75 0 0 0 .74.7h5.78a.75.75 0 0 0 .74-.7l.82-10.93H7.55Zm2.7 2.2a.75.75 0 0 1 .75.75v5.6a.75.75 0 0 1-1.5 0v-5.6a.75.75 0 0 1 .75-.75Zm3.5 0a.75.75 0 0 1 .75.75v5.6a.75.75 0 0 1-1.5 0v-5.6a.75.75 0 0 1 .75-.75Z" fill="currentColor"/>
-                  </svg>
-                </button>`
-              : "";
-
-          const actionRow = [
-            `<a class="action-button secondary icon-action-button" href="doctor-details.html?id=${doctor.id}" aria-label="View doctor details" title="View">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 5c5.1 0 9.27 4.03 10.45 6.68a.75.75 0 0 1 0 .64C21.27 14.97 17.1 19 12 19S2.73 14.97 1.55 12.32a.75.75 0 0 1 0-.64C2.73 9.03 6.9 5 12 5Zm0 1.5c-4.24 0-7.8 3.21-8.92 5.5 1.12 2.29 4.68 5.5 8.92 5.5s7.8-3.21 8.92-5.5C19.8 9.71 16.24 6.5 12 6.5Zm0 2.25a3.25 3.25 0 1 1 0 6.5 3.25 3.25 0 0 1 0-6.5Zm0 1.5a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5Z" fill="currentColor"/>
-              </svg>
-            </a>`,
-            approvalActions,
-            rejectAction,
-            accountAction,
-            deleteAction
-          ]
-            .filter(Boolean)
-            .join("");
-
-          return `
-              <tr>
-                <td>
-                <div class="table-meta">
-                  <strong>${doctor.name}</strong>
-                  <span>${doctor.id}</span>
-                </div>
-                </td>
-                <td>${doctor.email}</td>
-                <td>${doctor.specialty}</td>
-                <td>${formatDate(doctor.registrationDate)}</td>
-                <td>${createBadgeMarkup(doctor.approvalStatus)}</td>
-                <td>${createBadgeMarkup(doctor.accountStatus)}</td>
-                <td class="table-actions-cell">
-                  <div class="table-actions">
-                    <div class="table-action-row">
-                      ${actionRow}
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            `;
-        })
+        .map((doctor) => `
+          <tr class="ctx-row" data-doctor-id="${doctor.id}">
+            <td>
+              <div class="table-meta">
+                <strong>${doctor.name}</strong>
+                <span>${doctor.id}</span>
+              </div>
+            </td>
+            <td>${doctor.email}</td>
+            <td>${doctor.specialty}</td>
+            <td>${createBadgeMarkup(getDoctorRoleLabel(doctor), true)}</td>
+            <td>${formatDate(doctor.registrationDate)}</td>
+            <td>${createBadgeMarkup(doctor.approvalStatus)}</td>
+            <td>${createBadgeMarkup(doctor.accountStatus)}</td>
+            <td class="ctx-action-cell">
+              <button class="ctx-trigger" type="button" data-ctx-id="${doctor.id}" aria-label="Open actions">
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+                  <circle cx="12" cy="5" r="1.5" fill="currentColor"/>
+                  <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                  <circle cx="12" cy="19" r="1.5" fill="currentColor"/>
+                </svg>
+              </button>
+            </td>
+          </tr>
+        `)
         .join("");
 
       if (!filtered.length) {
@@ -2155,34 +2315,177 @@
       });
     }
 
-    body.addEventListener("click", async (event) => {
-      const button = event.target.closest("[data-action]");
-      if (!button) return;
-      const { action, id } = button.dataset;
-      if (action === "approve") {
-        const didApprove = await approveDoctor(id);
-        if (didApprove) applyFilters();
-        return;
+    // Left-click on row → navigate to doctor details
+    body.addEventListener("dblclick", (event) => {
+      if (event.target.closest(".ctx-trigger")) return;
+      const row = event.target.closest("tr[data-doctor-id]");
+      if (!row) return;
+      window.location.href = `doctor-details.html?id=${encodeURIComponent(row.dataset.doctorId)}`;
+    });
+
+    // Kebab (⋮) click → open context menu (right-anchored)
+    body.addEventListener("click", (event) => {
+      const trigger = event.target.closest(".ctx-trigger");
+      if (!trigger) return;
+      event.stopPropagation();
+      const doctor = getDoctorById(trigger.dataset.ctxId);
+      if (!doctor) return;
+      const rect = trigger.getBoundingClientRect();
+      openContextMenu(doctor, rect.right, rect.bottom + 6, true);
+    });
+
+    // Right-click on row → open context menu at cursor
+    body.addEventListener("contextmenu", (event) => {
+      const row = event.target.closest("tr[data-doctor-id]");
+      if (!row) return;
+      event.preventDefault();
+      const doctor = getDoctorById(row.dataset.doctorId);
+      if (!doctor) return;
+      openContextMenu(doctor, event.clientX + 2, event.clientY + 2, false);
+    });
+
+    function openContextMenu(doctor, x, y, anchorRight = false) {
+      document.getElementById("doctor-ctx-menu")?.remove();
+
+      const isDeleted  = doctor.accountStatus === "Deleted";
+      const isApproved = doctor.approvalStatus === "Approved";
+      const isPending  = doctor.approvalStatus === "Pending";
+      const isActive   = doctor.accountStatus === "Active";
+
+      const items = [];
+
+      items.push(`<button class="ctx-item" data-ctx-action="view">
+        <span class="ctx-icon ctx-icon-white">
+          <svg viewBox="0 0 24 24"><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" fill="currentColor"/><path d="M2.46 12.5a.75.75 0 0 1 0-1C3.7 9.52 7.37 5.25 12 5.25s8.3 4.27 9.54 6.25a.75.75 0 0 1 0 1C20.3 14.48 16.63 18.75 12 18.75S3.7 14.48 2.46 12.5Z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </span>
+        <span class="ctx-label">View details</span>
+      </button>`);
+
+      if (isPending && !isDeleted) {
+        items.push(`<button class="ctx-item" data-ctx-action="approve">
+          <span class="ctx-icon ctx-icon-success">
+            <svg viewBox="0 0 24 24"><path d="M9.55 17.05 4.5 12l1.4-1.4 3.65 3.65 8.55-8.55L19.5 7.1l-9.95 9.95Z" fill="currentColor"/></svg>
+          </span>
+          <span class="ctx-label ctx-label-success">Approve</span>
+        </button>`);
+        items.push(`<button class="ctx-item" data-ctx-action="reject">
+          <span class="ctx-icon ctx-icon-danger">
+            <svg viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4Z" fill="currentColor"/></svg>
+          </span>
+          <span class="ctx-label ctx-label-danger">Reject</span>
+        </button>`);
       }
-      if (action === "reactivate") {
-        const didActivate = await reactivateDoctor(id);
-        if (didActivate) applyFilters();
-        return;
+
+      if (isApproved && !isDeleted) {
+        if (isActive) {
+          items.push(`<button class="ctx-item" data-ctx-action="deactivate">
+            <span class="ctx-icon ctx-icon-warning">
+              <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 0 1-6.32-12.9l11.22 11.22A7.94 7.94 0 0 1 12 20Zm6.32-3.1L7.1 5.68A8 8 0 0 1 18.32 16.9Z" fill="currentColor"/></svg>
+            </span>
+            <span class="ctx-label ctx-label-warning">Deactivate</span>
+          </button>`);
+        } else {
+          items.push(`<button class="ctx-item" data-ctx-action="reactivate">
+            <span class="ctx-icon ctx-icon-success">
+              <svg viewBox="0 0 24 24"><path d="M9.55 17.05 4.5 12l1.4-1.4 3.65 3.65 8.55-8.55L19.5 7.1l-9.95 9.95Z" fill="currentColor"/></svg>
+            </span>
+            <span class="ctx-label ctx-label-success">Activate</span>
+          </button>`);
+        }
+        const isStandard = doctor.doctorAccountType === "standard";
+        const accessLabel = isStandard ? "Grant prediction access" : "Set standard access";
+        const accessIconClass = isStandard ? "ctx-icon-purple" : "ctx-icon-blue";
+        const accessLabelClass = isStandard ? "ctx-label-purple" : "ctx-label-blue";
+        const accessIcon = isStandard
+          ? `<svg viewBox="0 0 24 24"><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7Z" fill="currentColor"/></svg>`
+          : `<svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 9.4 8 10 4.5-.6 8-5 8-10V6l-8-4Zm0 6.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm-3.5 8.5c0-1.7 1.6-3 3.5-3s3.5 1.3 3.5 3v.5h-7V17Z" fill="currentColor"/></svg>`;
+        items.push(`<button class="ctx-item" data-ctx-action="toggle-access">
+          <span class="ctx-icon ${accessIconClass}">
+            ${accessIcon}
+          </span>
+          <span class="ctx-label ${accessLabelClass}">${accessLabel}</span>
+        </button>`);
+        items.push(`<div class="ctx-sep"></div>`);
+        items.push(`<button class="ctx-item" data-ctx-action="delete">
+          <span class="ctx-icon ctx-icon-danger">
+            <svg viewBox="0 0 24 24"><path d="M9 3.75h6a1 1 0 0 1 1 1v1.25h3a.75.75 0 0 1 0 1.5h-1.05l-.82 11.04A2.25 2.25 0 0 1 14.89 20.75H9.11a2.25 2.25 0 0 1-2.24-2.21L6.05 7.5H5a.75.75 0 0 1 0-1.5h3V4.75a1 1 0 0 1 1-1Z" fill="currentColor"/></svg>
+          </span>
+          <span class="ctx-label ctx-label-danger">Delete account</span>
+        </button>`);
       }
-      if (action === "reject") {
-        openConfirmation({
-          title: "Reject doctor registration",
-          message: "You can add an optional rejection reason before rejecting this doctor.",
-          confirmLabel: "Reject doctor",
-          reasonField: true,
-          variant: "danger",
-          onConfirm: async (reason) => {
-            const didReject = await rejectDoctor(id, reason);
-            if (didReject) applyFilters();
-          }
-        });
-        return;
-      }
+
+      const menu = document.createElement("div");
+      menu.id = "doctor-ctx-menu";
+      menu.className = "ctx-menu";
+      menu.innerHTML = `<div class="ctx-items">${items.join("")}</div>`;
+      document.body.appendChild(menu);
+
+      // Smart positioning
+      const mw = menu.offsetWidth || 240;
+      const mh = menu.offsetHeight || 180;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let left = anchorRight ? x - mw : x;
+      let top  = y;
+      if (left < 8) left = 8;
+      if (left + mw > vw - 8) left = vw - mw - 8;
+      if (top + mh > vh - 8) top = y - mh - 8;
+      if (top < 8) top = 8;
+      menu.style.left = `${left}px`;
+      menu.style.top  = `${top}px`;
+
+      // Action handler
+      menu.addEventListener("click", async (event) => {
+        const item = event.target.closest("[data-ctx-action]");
+        if (!item) return;
+        event.stopPropagation();
+        menu.remove();
+        const action = item.dataset.ctxAction;
+
+        if (action === "view") {
+          window.location.href = `doctor-details.html?id=${encodeURIComponent(doctor.id)}`;
+          return;
+        }
+        if (action === "approve") {
+          const ok = await approveDoctor(doctor.id);
+          if (ok) applyFilters();
+          return;
+        }
+        if (action === "reactivate") {
+          const ok = await reactivateDoctor(doctor.id);
+          if (ok) applyFilters();
+          return;
+        }
+        if (action === "toggle-access") {
+          const nextAccess = doctor.doctorAccountType === "standard" ? "prediction" : "standard";
+          openConfirmation({
+            title: nextAccess === "prediction" ? "Grant prediction access" : "Set standard doctor access",
+            message: nextAccess === "prediction"
+              ? "This will allow the doctor to manage patients and launch predictions."
+              : "This will keep the doctor in patient-management mode without prediction workflows.",
+            confirmLabel: nextAccess === "prediction" ? "Grant access" : "Set standard access",
+            variant: nextAccess === "prediction" ? "success" : "warning",
+            onConfirm: async () => {
+              const ok = await updateDoctorAccessType(doctor.id, nextAccess);
+              if (ok) applyFilters();
+            }
+          });
+          return;
+        }
+        if (action === "reject") {
+          openConfirmation({
+            title: "Reject doctor registration",
+            message: "You can add an optional rejection reason before rejecting this doctor.",
+            confirmLabel: "Reject doctor",
+            reasonField: true,
+            variant: "danger",
+            onConfirm: async (reason) => {
+              const ok = await rejectDoctor(doctor.id, reason);
+              if (ok) applyFilters();
+            }
+          });
+          return;
+        }
         if (action === "deactivate") {
           openConfirmation({
             title: "Deactivate doctor account",
@@ -2191,28 +2494,290 @@
             reasonField: true,
             variant: "warning",
             onConfirm: async (reason) => {
-              const didDeactivate = await deactivateDoctor(id, reason);
-              if (didDeactivate) applyFilters();
+              const ok = await deactivateDoctor(doctor.id, reason);
+              if (ok) applyFilters();
             }
+          });
+          return;
+        }
+        if (action === "delete") {
+          openConfirmation({
+            title: "Delete doctor account",
+            message: "Add the reason for deleting this account. The doctor will receive it by email.",
+            confirmLabel: "Delete account",
+            reasonField: true,
+            variant: "danger",
+            onConfirm: async (reason) => {
+              const ok = await deleteDoctor(doctor.id, reason);
+              if (ok) applyFilters();
+            }
+          });
+        }
+      });
+
+      // Close on outside click
+      const onOutside = (e) => {
+        if (!menu.contains(e.target)) {
+          menu.remove();
+          document.removeEventListener("click", onOutside, true);
+        }
+      };
+      setTimeout(() => document.addEventListener("click", onOutside, true), 0);
+    }
+
+    applyFilters(true);
+  }
+
+  async function fetchFeedbackCasesFromBackend() {
+    const payload = await requestAdminJson("/feedback-cases?limit=200");
+    return Array.isArray(payload?.items) ? payload.items : [];
+  }
+
+  function populateFeedbackReviewPage() {
+    const body = document.getElementById("feedback-table-body");
+    if (!body) return;
+
+    const search = document.getElementById("feedback-search");
+    const statusFilter = document.getElementById("feedback-status-filter");
+    const modelFilter = document.getElementById("feedback-model-filter");
+    const doctorFilter = document.getElementById("feedback-doctor-filter");
+    const eligibleFilter = document.getElementById("feedback-eligible-filter");
+    const fromFilter = document.getElementById("feedback-from-filter");
+    const toFilter = document.getElementById("feedback-to-filter");
+    const summary = document.getElementById("feedback-table-summary");
+    const pagination = document.getElementById("feedback-pagination");
+
+    let currentPage = 1;
+    const pageSize = 8;
+    let allCases = [];
+
+    const formatStatusLabel = (value) => {
+      const map = {
+        doctor_validated: "Doctor validated",
+        admin_approved: "Admin approved",
+        rejected: "Rejected",
+      };
+      return map[value] || value || "Unknown";
+    };
+
+    const normalizeDateInput = (value, isEnd = false) => {
+      if (!value) return null;
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return null;
+      if (isEnd) date.setHours(23, 59, 59, 999);
+      else date.setHours(0, 0, 0, 0);
+      return date;
+    };
+
+    const refreshDynamicFilters = () => {
+      const models = [...new Set(allCases.map((entry) => entry.modelVersionUsed).filter(Boolean))];
+      const doctors = [...new Set(allCases.map((entry) => entry.validatedByDoctorName).filter(Boolean))];
+      const selectedModel = modelFilter?.value || "all";
+      const selectedDoctor = doctorFilter?.value || "all";
+
+      if (modelFilter) {
+        modelFilter.innerHTML =
+          `<option value="all">All models</option>` +
+          models.map((value) => `<option value="${escapeAdminHtml(value)}">${escapeAdminHtml(value)}</option>`).join("");
+        modelFilter.value = models.includes(selectedModel) ? selectedModel : "all";
+      }
+
+      if (doctorFilter) {
+        doctorFilter.innerHTML =
+          `<option value="all">All doctors</option>` +
+          doctors.map((value) => `<option value="${escapeAdminHtml(value)}">${escapeAdminHtml(value)}</option>`).join("");
+        doctorFilter.value = doctors.includes(selectedDoctor) ? selectedDoctor : "all";
+      }
+    };
+
+    const renderPagination = (totalItems) => {
+      if (!pagination) return;
+      const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+      const pages = [];
+      for (let page = 1; page <= totalPages; page += 1) {
+        pages.push(`
+          <button class="pagination-button${page === currentPage ? " active" : ""}" type="button" data-page="${page}">
+            ${page}
+          </button>
+        `);
+      }
+      pagination.innerHTML = `
+        <button class="pagination-button pagination-nav" type="button" data-page="${Math.max(1, currentPage - 1)}" ${currentPage === 1 ? "disabled" : ""}>Prev</button>
+        ${pages.join("")}
+        <button class="pagination-button pagination-nav" type="button" data-page="${Math.min(totalPages, currentPage + 1)}" ${currentPage === totalPages ? "disabled" : ""}>Next</button>
+      `;
+      pagination.hidden = totalItems <= pageSize;
+    };
+
+    const applyFilters = (resetPage = false) => {
+      if (resetPage) currentPage = 1;
+      const keyword = (search?.value || "").trim().toLowerCase();
+      const selectedStatus = statusFilter?.value || "all";
+      const selectedModel = modelFilter?.value || "all";
+      const selectedDoctor = doctorFilter?.value || "all";
+      const selectedEligible = eligibleFilter?.value || "all";
+      const fromDate = normalizeDateInput(fromFilter?.value, false);
+      const toDate = normalizeDateInput(toFilter?.value, true);
+
+      const filtered = allCases.filter((entry) => {
+        const validatedAt = entry.validatedAt ? new Date(entry.validatedAt) : null;
+        const matchesKeyword =
+          !keyword ||
+          [
+            String(entry.predictionId?._id || entry.predictionId || ""),
+            entry.validatedByDoctorName,
+            entry.modelVersionUsed,
+            entry.selectedModelKey,
+            entry.predictedOutcome,
+            entry.realOutcome,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(keyword);
+        const matchesStatus = selectedStatus === "all" || entry.validationStatus === selectedStatus;
+        const matchesModel = selectedModel === "all" || entry.modelVersionUsed === selectedModel;
+        const matchesDoctor = selectedDoctor === "all" || entry.validatedByDoctorName === selectedDoctor;
+        const matchesEligible =
+          selectedEligible === "all" ||
+          (selectedEligible === "eligible" && entry.isRetrainEligible) ||
+          (selectedEligible === "not_eligible" && !entry.isRetrainEligible);
+        const matchesFrom = !fromDate || (validatedAt && validatedAt >= fromDate);
+        const matchesTo = !toDate || (validatedAt && validatedAt <= toDate);
+        return matchesKeyword && matchesStatus && matchesModel && matchesDoctor && matchesEligible && matchesFrom && matchesTo;
+      });
+
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="9"><div class="empty-state">No feedback cases match the current filters.</div></td></tr>`;
+        if (summary) summary.textContent = "Showing 0 feedback cases";
+        if (pagination) {
+          pagination.hidden = true;
+          pagination.innerHTML = "";
+        }
+        return;
+      }
+
+      const totalItems = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+      currentPage = Math.min(currentPage, totalPages);
+      const start = (currentPage - 1) * pageSize;
+      const visible = filtered.slice(start, start + pageSize);
+
+      body.innerHTML = visible
+        .map((entry) => {
+          const predictionId = String(entry.predictionId?._id || entry.predictionId || "");
+          const canReview = entry.validationStatus === "doctor_validated";
+
+          return `
+            <tr>
+              <td><span class="ticket-thread-id">${escapeAdminHtml(predictionId || "-")}</span></td>
+              <td>${createBadgeMarkup(entry.predictedOutcome || "Pending", true)}</td>
+              <td>${createBadgeMarkup(entry.realOutcome || "Pending", !entry.realOutcome)}</td>
+              <td>
+                <div class="table-meta">
+                  <strong>${escapeAdminHtml(entry.modelNameUsed || entry.modelVersionUsed || "-")}</strong>
+                  <span>${escapeAdminHtml(entry.selectionPolicy || "manual")} · ${escapeAdminHtml(entry.selectedModelKey || "-")}</span>
+                </div>
+              </td>
+              <td>${escapeAdminHtml(entry.validatedByDoctorName || "Unknown doctor")}</td>
+              <td>${entry.validatedAt ? formatDate(entry.validatedAt, true) : "-"}</td>
+              <td>${createBadgeMarkup(formatStatusLabel(entry.validationStatus))}</td>
+              <td>${createBadgeMarkup(entry.isRetrainEligible ? "Eligible" : "Not eligible", true)}</td>
+              <td class="action-row">
+                <button class="btn btn-primary btn-compact" type="button" data-feedback-approve="${escapeAdminHtml(entry._id)}" ${canReview ? "" : "disabled"}>Approve</button>
+                <button class="btn btn-danger btn-compact" type="button" data-feedback-reject="${escapeAdminHtml(entry._id)}" ${canReview ? "" : "disabled"}>Reject</button>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      if (summary) {
+        const startItem = start + 1;
+        const endItem = Math.min(start + pageSize, totalItems);
+        summary.textContent = `Showing ${startItem}-${endItem} of ${totalItems} feedback case${totalItems > 1 ? "s" : ""}`;
+      }
+      renderPagination(totalItems);
+    };
+
+    const refreshRows = async () => {
+      allCases = await fetchFeedbackCasesFromBackend();
+      refreshDynamicFilters();
+      applyFilters(false);
+    };
+
+    body.addEventListener("click", (event) => {
+      const approveButton = event.target.closest("[data-feedback-approve]");
+      if (approveButton) {
+        const feedbackCaseId = approveButton.dataset.feedbackApprove;
+        openConfirmation({
+          title: "Approve feedback case",
+          message: "This case will become eligible for offline retraining if complete.",
+          confirmLabel: "Approve",
+          variant: "warning",
+          onConfirm: async () => {
+            try {
+              await requestAdminJson(`/feedback-cases/${feedbackCaseId}/approve`, {
+                method: "POST",
+                body: JSON.stringify({}),
+              });
+              showToast("Feedback case approved for retraining.");
+              await refreshRows();
+            } catch (error) {
+              showToast(error.message || "Unable to approve feedback case.", "danger");
+            }
+          },
         });
         return;
       }
-      if (action === "delete") {
+
+      const rejectButton = event.target.closest("[data-feedback-reject]");
+      if (rejectButton) {
+        const feedbackCaseId = rejectButton.dataset.feedbackReject;
         openConfirmation({
-          title: "Delete doctor account",
-          message: "Add the reason for deleting this account. The doctor will receive it by email and see it when trying to log in.",
-          confirmLabel: "Delete account",
-          reasonField: true,
+          title: "Reject feedback case",
+          message: "Provide a reason before rejecting this case.",
+          confirmLabel: "Reject",
           variant: "danger",
+          reasonField: true,
           onConfirm: async (reason) => {
-            const didDelete = await deleteDoctor(id, reason);
-            if (didDelete) applyFilters();
-          }
+            try {
+              await requestAdminJson(`/feedback-cases/${feedbackCaseId}/reject`, {
+                method: "POST",
+                body: JSON.stringify({ reviewReason: reason }),
+              });
+              showToast("Feedback case rejected.");
+              await refreshRows();
+            } catch (error) {
+              showToast(error.message || "Unable to reject feedback case.", "danger");
+            }
+          },
         });
       }
     });
 
-    applyFilters(true);
+    [search, statusFilter, modelFilter, doctorFilter, eligibleFilter, fromFilter, toFilter].forEach((element) => {
+      if (!element) return;
+      element.addEventListener("input", () => applyFilters(true));
+      element.addEventListener("change", () => applyFilters(true));
+    });
+
+    pagination?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-page]");
+      if (!button || button.disabled) return;
+      currentPage = Number(button.dataset.page || currentPage);
+      applyFilters(false);
+    });
+
+    fetchFeedbackCasesFromBackend()
+      .then((rows) => {
+        allCases = rows;
+        refreshDynamicFilters();
+        applyFilters(true);
+      })
+      .catch((error) => {
+        body.innerHTML = `<tr><td colspan="9"><div class="empty-state">${escapeAdminHtml(error.message || "Unable to load feedback cases.")}</div></td></tr>`;
+        if (summary) summary.textContent = "Showing 0 feedback cases";
+      });
   }
 
   function populateDoctorDetails() {
@@ -2233,6 +2798,7 @@
     document.getElementById("detail-email").textContent = doctor.email;
     document.getElementById("detail-specialty").textContent = doctor.specialty;
     document.getElementById("detail-institution").textContent = doctor.hospital;
+    document.getElementById("detail-role").textContent = getDoctorRoleLabel(doctor);
     document.getElementById("detail-registration").textContent = formatDate(doctor.registrationDate);
 
     const documents = document.getElementById("detail-documents");
@@ -2242,7 +2808,7 @@
       documents.innerHTML = doctor.submittedDocuments
         .map((document, index) => {
           const fileName = document.file || document.fileName || "Unknown file";
-          const fileUrl = document.filePath ? `${document.filePath}` : "";
+          const fileUrl = document.filePath ? `http://localhost:5000${document.filePath}` : "";
           const canCheck = Boolean(fileUrl);
 
           return `
@@ -2298,6 +2864,7 @@
     const rejectButton = actions.querySelector('[data-detail-action="reject"]');
     const deactivateButton = actions.querySelector('[data-detail-action="deactivate"]');
     const reactivateButton = actions.querySelector('[data-detail-action="reactivate"]');
+    const toggleAccessButton = actions.querySelector('[data-detail-action="toggle-access"]');
     const deleteButton = actions.querySelector('[data-detail-action="delete"]');
 
     if (doctor.approvalStatus !== "Pending") {
@@ -2326,6 +2893,13 @@
       deleteButton?.remove();
     }
 
+    if (doctor.approvalStatus !== "Approved" || doctor.accountStatus === "Deleted") {
+      toggleAccessButton?.remove();
+    } else if (toggleAccessButton) {
+      toggleAccessButton.textContent =
+        doctor.doctorAccountType === "standard" ? "Grant prediction access" : "Set standard access";
+    }
+
     actions.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-detail-action]");
       if (!button) return;
@@ -2338,6 +2912,23 @@
       if (action === "reactivate") {
         const didActivate = await reactivateDoctor(doctor.id);
         if (didActivate) window.location.reload();
+        return;
+      }
+      if (action === "toggle-access") {
+        const nextAccess = doctor.doctorAccountType === "standard" ? "prediction" : "standard";
+        openConfirmation({
+          title: nextAccess === "prediction" ? "Grant prediction access" : "Set standard doctor access",
+          message:
+            nextAccess === "prediction"
+              ? "This will allow the doctor to manage patients and launch predictions."
+              : "This will keep the doctor in patient-management mode without prediction workflows.",
+          confirmLabel: nextAccess === "prediction" ? "Grant access" : "Set standard access",
+          variant: nextAccess === "prediction" ? "success" : "warning",
+          onConfirm: async () => {
+            const didUpdate = await updateDoctorAccessType(doctor.id, nextAccess);
+            if (didUpdate) window.location.reload();
+          }
+        });
         return;
       }
       if (action === "reject") {
@@ -2404,7 +2995,13 @@
     const replyActionRow = document.getElementById("reply-action-row");
     const statusSelect = document.getElementById("ticket-status-select");
     const resolveButton = document.getElementById("resolve-toggle");
+    const workflowControlPanel = statusSelect?.closest(".ticket-control-panel") || null;
     const deleteTicketButton = document.getElementById("delete-ticket-button");
+    const accessUpgradePanel = document.getElementById("access-upgrade-panel");
+    const accessUpgradeReason = document.getElementById("access-upgrade-reason");
+    const accessUpgradeApprove = document.getElementById("access-upgrade-approve");
+    const accessUpgradeRefuse = document.getElementById("access-upgrade-refuse");
+    const accessUpgradeState = document.getElementById("access-upgrade-state");
     const params = new URLSearchParams(window.location.search);
     let currentTicketId = params.get("ticket") || null;
     let selectedTicketIds = new Set();
@@ -2484,6 +3081,11 @@
       }
     };
 
+    const isAccessUpgradeCategory = (category) =>
+      String(category || "")
+        .trim()
+        .toLowerCase() === "access upgrade request";
+
     const renderDetail = (ticket) => {
       if (!ticket) return;
       currentTicketId = ticket.id;
@@ -2497,6 +3099,39 @@
       document.getElementById("ticket-updated").textContent = formatDate(ticket.updatedAt, true);
       statusSelect.value = ticket.status;
       resolveButton.textContent = ticket.status === "Resolved" ? "Mark unresolved" : "Mark resolved";
+
+      const isAccessUpgradeTicket = isAccessUpgradeCategory(ticket.category);
+      const upgradeDecision = ticket.accessUpgradeRequest?.decision || "pending";
+      if (workflowControlPanel) {
+        workflowControlPanel.hidden = isAccessUpgradeTicket;
+      }
+      if (accessUpgradePanel) {
+        accessUpgradePanel.hidden = !isAccessUpgradeTicket;
+      }
+      if (accessUpgradeReason) {
+        accessUpgradeReason.value = ticket.accessUpgradeRequest?.reviewedReason || "";
+        accessUpgradeReason.disabled = !isAccessUpgradeTicket || upgradeDecision !== "pending";
+      }
+      if (accessUpgradeApprove) {
+        accessUpgradeApprove.hidden = !isAccessUpgradeTicket;
+        accessUpgradeApprove.disabled = upgradeDecision !== "pending";
+      }
+      if (accessUpgradeRefuse) {
+        accessUpgradeRefuse.hidden = !isAccessUpgradeTicket;
+        accessUpgradeRefuse.disabled = upgradeDecision !== "pending";
+      }
+      if (accessUpgradeState) {
+        accessUpgradeState.hidden = !isAccessUpgradeTicket;
+        if (isAccessUpgradeTicket) {
+          if (upgradeDecision === "approved") {
+            accessUpgradeState.textContent = `Approved by ${ticket.accessUpgradeRequest?.reviewedBy || "Admin"} on ${formatDate(ticket.accessUpgradeRequest?.reviewedAt, true)}.`;
+          } else if (upgradeDecision === "refused") {
+            accessUpgradeState.textContent = `Refused by ${ticket.accessUpgradeRequest?.reviewedBy || "Admin"} on ${formatDate(ticket.accessUpgradeRequest?.reviewedAt, true)}.`;
+          } else {
+            accessUpgradeState.textContent = "Pending admin decision.";
+          }
+        }
+      }
 
       const conversation = document.getElementById("conversation-thread");
       conversation.innerHTML = ticket.messages
@@ -2752,6 +3387,45 @@
       }
     });
 
+    accessUpgradeApprove?.addEventListener("click", async () => {
+      if (!currentTicketId) return;
+      try {
+        const updatedTicket = await reviewAccessUpgrade(
+          currentTicketId,
+          "approve",
+          accessUpgradeReason?.value?.trim() || ""
+        );
+        renderTickets();
+        if (updatedTicket) renderDetail(updatedTicket);
+      } catch (error) {
+        showToast(error.message || "Unable to approve this access request.", "danger");
+      }
+    });
+
+    accessUpgradeRefuse?.addEventListener("click", async () => {
+      if (!currentTicketId) return;
+      openConfirmation({
+        title: "Refuse prediction access",
+        message: "Add the reason that explains why this doctor will remain in Standard doctor mode. This reason will be sent automatically by email.",
+        confirmLabel: "Refuse access",
+        reasonField: true,
+        variant: "danger",
+        onConfirm: async (reason) => {
+          try {
+            const updatedTicket = await reviewAccessUpgrade(
+              currentTicketId,
+              "refuse",
+              reason
+            );
+            renderTickets();
+            if (updatedTicket) renderDetail(updatedTicket);
+          } catch (error) {
+            showToast(error.message || "Unable to refuse this access request.", "danger");
+          }
+        }
+      });
+    });
+
     deleteTicketButton?.addEventListener("click", () => {
       if (!currentTicketId) return;
       openConfirmation({
@@ -2831,6 +3505,7 @@
       }
     }
     if (page === "system") populateSystemPage();
+    if (page === "feedback-review") populateFeedbackReviewPage();
   }
 
   function createModal() {
@@ -3041,57 +3716,57 @@
 
   function buildNotificationSections() {
     const feed = getNotificationFeed().filter((item) => !item.read);
-    if (!feed.length) {
-      return `
-        <section class="topbar-popover-section">
-          <div class="topbar-popover-empty">
-            <strong>No new alerts</strong>
-            <p>Doctor approvals and support message notifications will appear here.</p>
-          </div>
-        </section>
-      `;
-    }
 
-    const groups = [
-      { label: "Pending doctor approvals", type: "approval" },
-      { label: "Support message notifications", type: "support" }
+    const tabs = [
+      { label: "Pending doctor", type: "approval" },
+      { label: "Support message", type: "support" },
     ];
+    const counts = {
+      approval: feed.filter((i) => i.type === "approval").length,
+      support:  feed.filter((i) => i.type === "support").length,
+    };
 
-    return groups
-      .map((group) => {
-        const items = feed.filter((item) => item.type === group.type);
-        if (!items.length) return "";
+    const tabsHtml = `
+      <div class="notif-tabs">
+        ${tabs.map((t) => `
+          <button
+            class="notif-tab${activeNotificationTab === t.type ? " is-active" : ""}"
+            type="button"
+            data-notification-tab="${t.type}"
+          >
+            <span class="notif-tab-label">${t.label}</span>
+            <span class="notif-tab-count">${counts[t.type]}</span>
+          </button>
+        `).join("")}
+      </div>
+    `;
 
-        return `
-          <section class="topbar-popover-section">
-            <div class="topbar-popover-section-head">
-              <strong>${group.label}</strong>
-              <span>${items.length}</span>
-            </div>
-            <div class="topbar-popover-section-list">
-              ${items
-                .map(
-                  (item) => `
-                    <article class="topbar-popover-item${item.read ? "" : " unread"}">
-                      <a class="topbar-popover-link" href="${item.href}" data-notification-target="${item.key}">
-                        <div>
-                          <strong>${item.title}</strong>
-                          <p>${item.description}</p>
-                        </div>
-                        <span>${formatDate(item.date, true)}</span>
-                      </a>
-                      <button class="topbar-popover-read-button" type="button" data-mark-read="${item.key}">
-                        Mark as read
-                      </button>
-                    </article>
-                  `
-                )
-                .join("")}
-            </div>
-          </section>
-        `;
-      })
-      .join("");
+    const activeItems = feed.filter((item) => item.type === activeNotificationTab);
+
+    const cardsHtml = activeItems.length
+      ? activeItems.map((item) => `
+          <article class="notif-card${item.read ? "" : " unread"}">
+            <a class="notif-card-link" href="${item.href || "#"}" data-notification-target="${item.key}">
+              <div class="notif-card-header">
+                <strong class="notif-card-title">
+                  <span class="notif-dot" aria-hidden="true"></span>
+                  ${item.title}
+                </strong>
+                <span class="notif-card-date">${formatDate(item.date, true)}</span>
+              </div>
+              <p class="notif-card-body">${item.description}</p>
+            </a>
+            <button class="notif-read-btn" type="button" data-mark-read="${item.key}" aria-label="Mark as read">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </button>
+          </article>
+        `).join("")
+      : `<div class="notif-empty">
+           <strong>All clear</strong>
+           <p>No unread ${activeNotificationTab === "approval" ? "doctor approvals" : "support messages"}.</p>
+         </div>`;
+
+    return tabsHtml + `<div class="notif-card-list">${cardsHtml}</div>`;
   }
 
   function setupTopbarMenus() {
@@ -3126,6 +3801,13 @@
             <p>Select the prediction model used in the system review workspace.</p>
           </div>
         </div>
+        <div class="system-policy-block">
+          <div class="system-policy-head">
+            <strong>Selection mode</strong>
+            <span class="system-policy-summary"></span>
+          </div>
+          <div class="system-policy-options">${buildSystemSelectionPolicyOptions()}</div>
+        </div>
         <div class="system-model-options">${buildSystemModelOptions()}</div>
       `;
       modelSwitcher.appendChild(modelPopover);
@@ -3143,8 +3825,54 @@
       });
 
       modelPopover.addEventListener("click", (event) => {
+        const nextPolicyButton = event.target.closest("[data-selection-policy]");
+        if (nextPolicyButton) {
+          const nextPolicy = nextPolicyButton.dataset.selectionPolicy;
+          if (!nextPolicy) return;
+          if (nextPolicy === adminUi.predictionSelectionPolicy) return;
+
+          nextPolicyButton.disabled = true;
+          requestAdminJson("/predictions/models/active", {
+            method: "PUT",
+            body: JSON.stringify({ selectionPolicy: nextPolicy }),
+          })
+            .then((payload) => {
+              systemModelOptionsCache = Array.isArray(payload?.options) && payload.options.length
+                ? payload.options.map((model) => ({
+                    key: model.key || "",
+                    label: model.label || DEFAULT_SYSTEM_MODEL,
+                    description: model.description || "",
+                    deployed: model.deployed !== false,
+                  }))
+                : systemModelOptionsCache;
+
+              adminUi.systemModel = payload?.activeModelLabel || adminUi.systemModel || DEFAULT_SYSTEM_MODEL;
+              adminUi.predictionSelectionPolicy =
+                payload?.selectionPolicy === "auto_by_completeness"
+                  ? "auto_by_completeness"
+                  : DEFAULT_SELECTION_POLICY;
+              persistUiState();
+              syncSystemModelUi();
+              renderCurrentAdminPage();
+              showToast(
+                `Selection mode set to ${getSelectionPolicyLabel(adminUi.predictionSelectionPolicy)}.`
+              );
+            })
+            .catch((error) => {
+              showToast(error?.message || "Unable to update selection mode.", "danger");
+            })
+            .finally(() => {
+              nextPolicyButton.disabled = false;
+            });
+          return;
+        }
+
         const option = event.target.closest("[data-system-model]");
         if (!option) return;
+        if ((adminUi.predictionSelectionPolicy || DEFAULT_SELECTION_POLICY) !== "manual") {
+          showToast("Switch to Manual mode to select a fixed model.", "warning");
+          return;
+        }
         const nextModel = option.dataset.systemModel;
         const nextModelKey = option.dataset.systemModelKey;
         if (!nextModel || !nextModelKey) return;
@@ -3156,7 +3884,10 @@
         option.disabled = true;
         requestAdminJson("/predictions/models/active", {
           method: "PUT",
-          body: JSON.stringify({ modelKey: nextModelKey }),
+          body: JSON.stringify({
+            modelKey: nextModelKey,
+            selectionPolicy: adminUi.predictionSelectionPolicy || DEFAULT_SELECTION_POLICY,
+          }),
         })
           .then((payload) => {
             systemModelOptionsCache = Array.isArray(payload?.options) && payload.options.length
@@ -3169,6 +3900,10 @@
               : systemModelOptionsCache;
 
             adminUi.systemModel = payload?.activeModelLabel || nextModel;
+            adminUi.predictionSelectionPolicy =
+              payload?.selectionPolicy === "auto_by_completeness"
+                ? "auto_by_completeness"
+                : DEFAULT_SELECTION_POLICY;
             persistUiState();
             syncSystemModelUi();
             renderCurrentAdminPage();
@@ -3192,17 +3927,18 @@
       notificationPopover.id = "admin-notification-popover";
       notificationPopover.hidden = true;
       notificationPopover.innerHTML = `
-        <div class="topbar-popover-head">
-          <div>
-            <strong>Notifications</strong>
-            <p>Unread doctor approval and support message updates.</p>
+        <div class="notif-panel-head">
+          <div class="notif-panel-copy">
+            <strong class="notif-panel-title">Notifications</strong>
+            <p class="notif-panel-sub">Unread doctor approval and support message updates.</p>
           </div>
-          <button class="topbar-inline-action" type="button" id="mark-all-notifications">
+          <button class="notif-mark-all-btn" type="button" id="mark-all-notifications">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="13" height="13"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
             Mark all as read
           </button>
         </div>
-        <div class="topbar-popover-scroll">
-          <div class="topbar-popover-list" id="admin-notification-list">${buildNotificationSections()}</div>
+        <div class="notif-panel-scroll">
+          <div id="admin-notification-list">${buildNotificationSections()}</div>
         </div>
       `;
       actions.appendChild(notificationPopover);
@@ -3225,8 +3961,9 @@
         if (list) list.innerHTML = buildNotificationSections();
         const markAllButton = notificationPopover.querySelector("#mark-all-notifications");
         if (markAllButton) {
-          markAllButton.disabled = notificationCount === 0;
-          markAllButton.setAttribute("aria-disabled", String(notificationCount === 0));
+          const total = getNotificationFeed().filter((i) => !i.read).length;
+          markAllButton.disabled = total === 0;
+          markAllButton.setAttribute("aria-disabled", String(total === 0));
         }
       };
 
@@ -3258,17 +3995,29 @@
       notificationTrigger.addEventListener("click", toggleNotifications);
 
       notificationPopover.addEventListener("click", async (event) => {
-        const markReadButton = event.target.closest("[data-mark-read]");
-        const markAllButton = event.target.closest("#mark-all-notifications");
+        event.stopPropagation();
 
+        const tabButton = event.target.closest("[data-notification-tab]");
+        if (tabButton) {
+          event.preventDefault();
+          const nextTab = tabButton.dataset.notificationTab;
+          if (nextTab && nextTab !== activeNotificationTab) {
+            activeNotificationTab = nextTab;
+            const list = notificationPopover.querySelector("#admin-notification-list");
+            if (list) list.innerHTML = buildNotificationSections();
+          }
+          return;
+        }
+
+        const markReadButton = event.target.closest("[data-mark-read]");
         if (markReadButton) {
           event.preventDefault();
-          event.stopPropagation();
           await markAdminNotificationAsRead(markReadButton.dataset.markRead).catch(() => {});
           await refreshNotifications();
           return;
         }
 
+        const markAllButton = event.target.closest("#mark-all-notifications");
         if (markAllButton) {
           event.preventDefault();
           await markAllAdminNotificationsAsRead().catch(() => {});
@@ -3276,16 +4025,14 @@
           return;
         }
 
-        const notificationLink = event.target.closest(".topbar-popover-link");
+        const notificationLink = event.target.closest(".notif-card-link");
         if (notificationLink) {
           event.preventDefault();
           const notificationId = notificationLink.dataset.notificationTarget;
           if (!notificationId) return;
           const target = await openAdminNotificationTarget(notificationId).catch(() => null);
           await refreshNotifications();
-          if (target?.url) {
-            window.location.href = target.url;
-          }
+          if (target?.url) window.location.href = target.url;
         }
       });
     }

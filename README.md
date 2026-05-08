@@ -101,3 +101,36 @@ Suggested next improvements:
 - persist uploaded datasets and prediction history
 - integrate model inference and real explainability outputs
 - add production deployment configuration
+
+## Auto Model Selection (Backend)
+
+The backend now supports two prediction selection policies:
+
+- `manual` (default): use the active model set by admin
+- `auto_by_completeness`: choose `LR/RF/DNN` automatically from form completeness buckets
+
+Selection metadata is stored on each prediction:
+
+- `selectionPolicy`
+- `selectedModelKey`
+- `completenessScore`
+- `completenessBucket`
+- `selectionReason`
+
+To generate bucket mapping from offline benchmark CSV:
+
+```bash
+npm run benchmark:auto-selection
+```
+
+Input template: `scripts/benchmark_model_by_completeness.csv`  
+Generated config: `backend/src/config/autoModelSelection.config.json`
+
+For a real benchmark on the integrated 500-row dataset:
+
+```bash
+python scripts/benchmark_auto_selection_500.py
+npm run benchmark:auto-selection
+```
+
+Detailed benchmark output: `scripts/benchmark_outputs/auto_selection_detailed.csv`

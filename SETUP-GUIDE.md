@@ -26,7 +26,7 @@ PORT=5000
 FLASK_AI_URL=http://ai-server:5001
 MONGODB_URI=mongodb://mongo:27017/noufar_cdss
 JWT_SECRET=your_secret_here
-SMTP_USER=noufar.cdss@gmail.com
+SMTP_USER=your_gmail_address
 SMTP_PASS=your_gmail_app_password
 ```
 

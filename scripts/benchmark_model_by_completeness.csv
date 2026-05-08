@@ -1,0 +1,10 @@
+bucket,maxScoreExclusive,modelKey,metric
+low,0.45,random_forest,0.733482
+low,0.45,logistic_regression,0.742609
+low,0.45,deep_neural_network,0.680795
+medium,0.75,random_forest,0.786121
+medium,0.75,logistic_regression,0.768767
+medium,0.75,deep_neural_network,0.738066
+high,1.01,random_forest,0.792001
+high,1.01,logistic_regression,0.778675
+high,1.01,deep_neural_network,0.828124

@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const Admin = require("../models/Admin");
 const { createNotification } = require("../services/notificationService");
 const { emitDoctorRegistrationEvent } = require("../services/realtimeService");
 const {
@@ -12,15 +13,16 @@ const {
   sendPasswordResetEmail,
 } = require("../services/emailService");
 
-const generateToken = (id, role) =>
-  jwt.sign({ id, role }, process.env.JWT_SECRET, {
+const generateToken = (id, role, actorType = role) =>
+  jwt.sign({ id, role, actorType }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
 
 const getActorName = (user) => user?.name || user?.email || "Admin";
 
-const appendDoctorHistory = (doctor, label, actor) => {
+const appendDoctorHistory = (doctor, label, actor, actorId = null) => {
   doctor.assignedAdmin = actor;
+  doctor.assignedAdminId = actorId || doctor.assignedAdminId || null;
   doctor.statusHistory = [
     {
       date: new Date(),
@@ -54,24 +56,28 @@ const sanitizeUser = (user) => ({
   _id: user._id,
   name: user.name,
   email: user.email,
-  role: user.role,
-  specialty: user.specialty,
-  hospital: user.hospital,
-  profilePhoto: user.profilePhoto,
-  twoStepEnabled: user.twoStepEnabled,
-  sessionTimeout: normalizeSessionTimeout(user.sessionTimeout),
-  termsAccepted: user.termsAccepted,
-  submittedDocuments: user.submittedDocuments,
-  approvalStatus: user.approvalStatus,
-  accountStatus: user.accountStatus,
-  rejectionReason: user.rejectionReason,
-  deactivationReason: user.deactivationReason,
-  deletionReason: user.deletionReason,
-  assignedAdmin: user.assignedAdmin,
-  statusHistory: user.statusHistory,
+  role: user.role || "doctor",
+  doctorAccountType: user.doctorAccountType === "standard" ? "standard" : "prediction",
+  specialty: user.specialty || "",
+  hospital: user.hospital || "",
+  profilePhoto: user.profilePhoto || "",
+  twoStepEnabled: Boolean(user.twoStepEnabled),
+  sessionTimeout: normalizeSessionTimeout(user.sessionTimeout || "Never"),
+  termsAccepted: Boolean(user.termsAccepted),
+  submittedDocuments: Array.isArray(user.submittedDocuments) ? user.submittedDocuments : [],
+  approvalStatus: user.approvalStatus || "Approved",
+  accountStatus: user.accountStatus || "Active",
+  rejectionReason: user.rejectionReason || "",
+  deactivationReason: user.deactivationReason || "",
+  deletionReason: user.deletionReason || "",
+  assignedAdmin: user.assignedAdmin || "System",
+  assignedAdminId: user.assignedAdminId || null,
+  statusHistory: Array.isArray(user.statusHistory) ? user.statusHistory : [],
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
+
+const getAuthCollection = (user) => (user?.role === "admin" ? Admin : User);
 
 const sanitizeUsers = (users) => users.map((user) => sanitizeUser(user));
 
@@ -85,6 +91,7 @@ const registerUser = async (req, res, next) => {
       specialty,
       hospital,
       adminKey,
+      doctorAccountType,
       termsAccepted,
     } = req.body;
     const medicalLicenseFile = req.files?.medicalLicense?.[0];
@@ -96,10 +103,16 @@ const registerUser = async (req, res, next) => {
     }
 
     const requestedRole = role === "admin" ? "admin" : "doctor";
+    const normalizedDoctorAccountType = doctorAccountType === "standard" ? "standard" : "prediction";
 
     if (requestedRole === "admin" && adminKey !== process.env.ADMIN_REGISTRATION_KEY) {
       res.status(403);
       throw new Error("Invalid admin registration key");
+    }
+
+    if (requestedRole === "admin") {
+      res.status(403);
+      throw new Error("Admin self-registration is disabled. Use default admin bootstrap credentials.");
     }
 
     if (requestedRole === "doctor") {
@@ -149,6 +162,7 @@ const registerUser = async (req, res, next) => {
       email: normalizedEmail,
       password,
       role: requestedRole,
+      doctorAccountType: requestedRole === "doctor" ? normalizedDoctorAccountType : "prediction",
       specialty,
       hospital,
       termsAccepted: Boolean(termsAccepted),
@@ -221,7 +235,7 @@ const registerUser = async (req, res, next) => {
 
     res.status(201).json({
       ...sanitizeUser(user),
-      token: generateToken(user._id, user.role),
+      token: generateToken(user._id, user.role, "doctor"),
     });
   } catch (error) {
     if (res.statusCode === 200) {
@@ -240,7 +254,11 @@ const loginUser = async (req, res, next) => {
       throw new Error("Email and password are required");
     }
     // pour login / récupération user
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const normalizedEmail = String(email).toLowerCase();
+    const isAdminLogin = expectedRole === "admin";
+    const user = isAdminLogin
+      ? await Admin.findOne({ email: normalizedEmail })
+      : await User.findOne({ email: normalizedEmail });
 
     if (!user || !(await user.matchPassword(password))) {
       res.status(401);
@@ -307,7 +325,7 @@ const loginUser = async (req, res, next) => {
 
     res.status(200).json({
       ...sanitizeUser(user),
-      token: generateToken(user._id, user.role),
+      token: generateToken(user._id, user.role, user.role === "admin" ? "admin" : "doctor"),
     });
   } catch (error) {
     if (res.statusCode === 200) {
@@ -352,7 +370,7 @@ const verifyTwoStepLogin = async (req, res, next) => {
 
     res.status(200).json({
       ...sanitizeUser(user),
-      token: generateToken(user._id, user.role),
+      token: generateToken(user._id, user.role, "doctor"),
     });
   } catch (error) {
     if (res.statusCode === 200) {
@@ -365,7 +383,8 @@ const verifyTwoStepLogin = async (req, res, next) => {
 const getUserProfile = async (req, res, next) => {
   try {
     // pour récupérer l’utilisateur connecté
-    const user = await User.findById(req.user._id);
+    const Model = getAuthCollection(req.user);
+    const user = await Model.findById(req.user._id);
 
     if (!user) {
       res.status(404);
@@ -380,7 +399,8 @@ const getUserProfile = async (req, res, next) => {
 
 const updateUserProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id);
+    const Model = getAuthCollection(req.user);
+    const user = await Model.findById(req.user._id);
 
     if (!user) {
       res.status(404);
@@ -402,8 +422,10 @@ const updateUserProfile = async (req, res, next) => {
     }
 
     user.name = String(name).trim();
-    user.specialty = String(specialty || "").trim();
-    user.hospital = String(hospital || "").trim();
+    if (user.role !== "admin") {
+      user.specialty = String(specialty || "").trim();
+      user.hospital = String(hospital || "").trim();
+    }
     user.profilePhoto = typeof profilePhoto === "string" ? profilePhoto : user.profilePhoto;
     user.twoStepEnabled = Boolean(twoStepEnabled);
 
@@ -424,7 +446,8 @@ const updateUserProfile = async (req, res, next) => {
 
 const updateUserEmail = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id);
+    const Model = getAuthCollection(req.user);
+    const user = await Model.findById(req.user._id);
 
     if (!user) {
       res.status(404);
@@ -450,12 +473,16 @@ const updateUserEmail = async (req, res, next) => {
       throw new Error("The new email and confirmation email do not match");
     }
 
-    const emailTaken = await User.findOne({
+    const emailTakenInUsers = await User.findOne({
+      email: newEmail,
+      _id: { $ne: user._id },
+    });
+    const emailTakenInAdmins = await Admin.findOne({
       email: newEmail,
       _id: { $ne: user._id },
     });
 
-    if (emailTaken) {
+    if (emailTakenInUsers || emailTakenInAdmins) {
       res.status(400);
       throw new Error("This email is already in use");
     }
@@ -465,7 +492,7 @@ const updateUserEmail = async (req, res, next) => {
 
     res.status(200).json({
       user: sanitizeUser(user),
-      token: generateToken(user._id, user.role),
+      token: generateToken(user._id, user.role, user.role === "admin" ? "admin" : "doctor"),
       message: "Email updated successfully",
     });
   } catch (error) {
@@ -475,7 +502,8 @@ const updateUserEmail = async (req, res, next) => {
 
 const updateUserPassword = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id);
+    const Model = getAuthCollection(req.user);
+    const user = await Model.findById(req.user._id);
 
     if (!user) {
       res.status(404);
@@ -622,7 +650,7 @@ const resetPassword = async (req, res, next) => {
 const getAllUsers = async (req, res, next) => {
   try {
     // pour lister les médecins
-    const users = await User.find().sort({ createdAt: -1 });
+    const users = await User.find({ role: "doctor" }).sort({ createdAt: -1 });
     res.status(200).json(sanitizeUsers(users));
   } catch (error) {
     next(error);
@@ -634,7 +662,7 @@ const getAdminOverview = async (req, res, next) => {
     const totalUsers = await User.countDocuments();
     const approvedDoctors = await User.countDocuments({ role: "doctor", approvalStatus: "Approved" });
     const pendingDoctors = await User.countDocuments({ role: "doctor", approvalStatus: "Pending" });
-    const totalAdmins = await User.countDocuments({ role: "admin" });
+    const totalAdmins = await Admin.countDocuments();
 
     res.status(200).json({
       message: "Admin access granted",
@@ -676,7 +704,7 @@ const approveDoctorAccount = async (req, res, next) => {
     doctor.rejectionReason = "";
     doctor.deactivationReason = "";
     doctor.deletionReason = "";
-    appendDoctorHistory(doctor, "Doctor approved and account activated", actor);
+    appendDoctorHistory(doctor, "Doctor approved and account activated", actor, req.user?._id || null);
     await doctor.save();
 
     let emailStatus = "sent";
@@ -761,7 +789,7 @@ const deactivateDoctorAccount = async (req, res, next) => {
     doctor.accountStatus = "Inactive";
     doctor.deactivationReason = deactivationReason;
     doctor.deletionReason = "";
-    appendDoctorHistory(doctor, `Doctor account deactivated: ${deactivationReason}`, actor);
+    appendDoctorHistory(doctor, `Doctor account deactivated: ${deactivationReason}`, actor, req.user?._id || null);
     await doctor.save();
 
     res.status(200).json({
@@ -786,7 +814,7 @@ const activateDoctorAccount = async (req, res, next) => {
     doctor.accountStatus = "Active";
     doctor.deactivationReason = "";
     doctor.deletionReason = "";
-    appendDoctorHistory(doctor, "Doctor account activated", actor);
+    appendDoctorHistory(doctor, "Doctor account activated", actor, req.user?._id || null);
     await doctor.save();
 
     let emailStatus = "sent";
@@ -816,6 +844,50 @@ const activateDoctorAccount = async (req, res, next) => {
   }
 };
 
+const updateDoctorAccessType = async (req, res, next) => {
+  try {
+    const doctor = await User.findById(req.params.id);
+    const actor = getActorName(req.user);
+
+    if (!doctor || doctor.role !== "doctor") {
+      res.status(404);
+      throw new Error("Doctor not found");
+    }
+
+    if (doctor.accountStatus === "Deleted") {
+      res.status(400);
+      throw new Error("Deleted doctor accounts cannot be updated");
+    }
+
+    const requestedType = String(req.body?.doctorAccountType || "").trim().toLowerCase();
+    if (!["standard", "prediction"].includes(requestedType)) {
+      res.status(400);
+      throw new Error("Doctor access type must be standard or prediction");
+    }
+
+    doctor.doctorAccountType = requestedType;
+    appendDoctorHistory(
+      doctor,
+      requestedType === "prediction"
+        ? "Doctor access upgraded to Doctor with prediction"
+        : "Doctor access changed to Standard doctor",
+      actor,
+      req.user?._id || null
+    );
+    await doctor.save();
+
+    res.status(200).json({
+      user: sanitizeUser(doctor),
+      message:
+        requestedType === "prediction"
+          ? "Doctor access updated to Doctor with prediction"
+          : "Doctor access updated to Standard doctor",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteDoctorAccount = async (req, res, next) => {
   try {
     const doctor = await User.findById(req.params.id);
@@ -831,7 +903,7 @@ const deleteDoctorAccount = async (req, res, next) => {
     doctor.accountStatus = "Deleted";
     doctor.deletionReason = deletionReason;
     doctor.deactivationReason = "";
-    appendDoctorHistory(doctor, `Doctor account deleted: ${deletionReason}`, actor);
+    appendDoctorHistory(doctor, `Doctor account deleted: ${deletionReason}`, actor, req.user?._id || null);
     await doctor.save();
 
     let emailStatus = "sent";
@@ -878,5 +950,6 @@ module.exports = {
   rejectDoctorAccount,
   deactivateDoctorAccount,
   activateDoctorAccount,
+  updateDoctorAccessType,
   deleteDoctorAccount,
 };

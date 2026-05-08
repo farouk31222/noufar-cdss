@@ -221,6 +221,23 @@
                       <button class="btn btn-secondary" type="button" id="resolve-toggle">Mark resolved</button>
                     </div>
                   </div>
+
+                  <div class="ticket-control-panel" id="access-upgrade-panel" hidden>
+                    <div class="ticket-control-copy">
+                      <span class="ticket-control-kicker">Access upgrade request</span>
+                      <strong>Review doctor prediction access</strong>
+                      <p>Approve this request to upgrade the doctor to Doctor with prediction, or refuse it and keep the account in Standard doctor mode.</p>
+                    </div>
+                    <div class="reply-box reply-box-inline">
+                      <label class="filter-label" for="access-upgrade-reason">Admin note</label>
+                      <textarea id="access-upgrade-reason" placeholder="Optional note for the doctor..."></textarea>
+                      <div class="action-row">
+                        <button class="btn btn-secondary" type="button" id="access-upgrade-refuse">Refuse access</button>
+                        <button class="btn btn-primary" type="button" id="access-upgrade-approve">Approve access</button>
+                      </div>
+                      <p class="muted-copy" id="access-upgrade-state" hidden></p>
+                    </div>
+                  </div>
                 </div>
               </article>
             </div>
@@ -229,9 +246,7 @@
       </section>
     </div>
 
-    <script src="/config.js"></script>
     <script src="admin-data.js"></script>
-    <script src="/config.js"></script>
     <script src="admin-app.js"></script>
   </body>
 </html>

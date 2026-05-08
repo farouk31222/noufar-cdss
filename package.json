@@ -1,0 +1,24 @@
+{
+  "name": "noufar-cdss",
+  "version": "1.0.0",
+  "description": "NOUFAR CDSS is a medical web application designed for doctors to support hyperthyroidism relapse prediction through a polished clinical workflow and an admin management console.",
+  "main": "account-settings.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "benchmark:auto-selection": "node scripts/generate_auto_model_selection_config.js",
+    "feedback:export-confirmed": "python scripts/export_confirmed_cases.py --mongo-uri \"mongodb://127.0.0.1:27017/noufar_cdss\" --db noufar_cdss --out scripts/benchmark_outputs/retrain_dataset_approved.csv",
+    "feedback:retrain": "python scripts/retrain_model.py --dataset scripts/benchmark_outputs/retrain_dataset_approved.csv --out-dir scripts/benchmark_outputs/retraining_outputs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farouk31222/noufar-cdss.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/farouk31222/noufar-cdss/issues"
+  },
+  "homepage": "https://github.com/farouk31222/noufar-cdss#readme"
+}
