@@ -39,3 +39,7 @@ _redirects
 
 # ── Nested duplicate folder (Windows artifact) ─
 noufar cdss/
+
+# ── Claude internal session data ──────────────
+.claude/
+build-log.txt
