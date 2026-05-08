@@ -984,11 +984,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.profile-access-badge:not(.badge-prediction)::before {
-  content: "👨‍⚕️";
-  font-size: 0.8rem;
-}
-
 .profile-menu-links,
 .profile-menu-footer {
   display: grid;
