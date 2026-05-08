@@ -949,17 +949,44 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
   width: fit-content;
-  margin-top: 0.5rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  background: rgba(25, 118, 210, 0.08);
-  border: 1px solid rgba(25, 118, 210, 0.15);
-  color: #1565c0;
-  font-size: 0.7rem;
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 7px;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.035em;
   text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+/* Doctor with Prediction badge - Premium blue style */
+.profile-access-badge.badge-prediction {
+  background: linear-gradient(135deg, rgba(25, 118, 210, 0.15), rgba(21, 101, 192, 0.1));
+  border: 1.5px solid rgba(25, 118, 210, 0.3);
+  color: #1565c0;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.12);
+}
+
+.profile-access-badge.badge-prediction::before {
+  content: "✓";
+  font-weight: 900;
+  font-size: 0.8rem;
+  color: #1976d2;
+}
+
+/* Standard Doctor badge - Neutral grey style */
+.profile-access-badge:not(.badge-prediction) {
+  background: linear-gradient(135deg, rgba(120, 144, 156, 0.1), rgba(96, 125, 139, 0.08));
+  border: 1.5px solid rgba(120, 144, 156, 0.25);
+  color: #546e7a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.profile-access-badge:not(.badge-prediction)::before {
+  content: "👨‍⚕️";
+  font-size: 0.8rem;
 }
 
 .profile-menu-links,
