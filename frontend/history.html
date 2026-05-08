@@ -17,7 +17,7 @@
     <link rel="icon" type="image/png" href="assets/noufar-logo.png" />
     <link rel="shortcut icon" href="assets/noufar-logo.png" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="dashboard.css?v=20260510-13" />
   </head>
   <body class="app-body history-page-body">
     <div class="app-layout">
@@ -38,6 +38,22 @@
           <a class="sidebar-link" href="new-prediction.html">
             <img class="sidebar-icon-image" src="assets/sidebar-plus-icon.png" alt="" aria-hidden="true" />
             <span>New Prediction</span>
+          </a>
+          <a class="sidebar-link active" href="history.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12a7 7 0 1 0 2-4.9M5 4v5h5" />
+            </svg>
+            <span>Predictions</span>
+          </a>
+          <a class="sidebar-link" href="patients.html">
+            <img class="sidebar-icon-image" src="assets/pattients.png" alt="" aria-hidden="true" />
+            <span>Patients</span>
+          </a>
+          <a class="sidebar-link" href="doctor-inbox.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Zm0 6.5h5l1.5 2h3L15 14h5" />
+            </svg>
+            <span>Inbox</span>
           </a>
         </nav>
       </aside>
@@ -128,6 +144,9 @@
                 <span class="dashboard-pill">Relapse probability review</span>
                 <span class="dashboard-pill">Manual and imported cases</span>
               </div>
+              <div class="prediction-page-hero-actions">
+                <a class="btn btn-primary btn-sm" href="new-prediction.html">Add New Prediction</a>
+              </div>
             </div>
           </section>
 
@@ -216,6 +235,48 @@
               </div>
             </div>
 
+            <div class="history-filters-bar">
+              <div class="history-filter-item">
+                <label for="filter-input-source">Input Source</label>
+                <select id="filter-input-source">
+                  <option value="">All sources</option>
+                  <option value="Manual">Manual</option>
+                  <option value="Data Import">Data Import</option>
+                </select>
+              </div>
+
+              <div class="history-filter-item">
+                <label for="filter-prediction">Prediction</label>
+                <select id="filter-prediction">
+                  <option value="">All predictions</option>
+                  <option value="No Relapse">No Relapse</option>
+                  <option value="Relapse">Relapse</option>
+                </select>
+              </div>
+
+              <div class="history-filter-item">
+                <label for="filter-outcome">Confirmed Outcome</label>
+                <select id="filter-outcome">
+                  <option value="">All outcomes</option>
+                  <option value="Awaiting confirmation">Awaiting confirmation</option>
+                  <option value="Relapse">Relapse</option>
+                  <option value="No Relapse">No Relapse</option>
+                  <option value="Correct">Correct</option>
+                  <option value="Incorrect">Incorrect</option>
+                </select>
+              </div>
+
+              <div class="history-filter-item">
+                <label for="filter-date">Date</label>
+                <select id="filter-date">
+                  <option value="">All dates</option>
+                  <option value="today">Today</option>
+                  <option value="week">Last 7 days</option>
+                  <option value="month">Last 30 days</option>
+                </select>
+              </div>
+            </div>
+
             <div class="table-shell">
               <table class="results-table history-results-table">
                 <thead>
@@ -223,6 +284,7 @@
                     <th>Patient</th>
                     <th>Age / Sex</th>
                     <th>Date</th>
+                    <th>Predicted by</th>
                     <th>Input Source</th>
                     <th>Prediction</th>
                     <th>Probability</th>
@@ -286,11 +348,8 @@
       </div>
     </section>
 
-    <script src="/config.js"></script>
     <script src="data.js?v=20260501d"></script>
-    <script src="/config.js"></script>
     <script src="app-shell.js?v=20260501c"></script>
-    <script src="/config.js"></script>
     <script src="history.js?v=20260501e"></script>
   </body>
 </html>

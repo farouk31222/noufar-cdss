@@ -9,6 +9,12 @@ const historySearchShell = document.querySelector("#history-search-shell");
 const historySearchToggle = document.querySelector("#history-search-toggle");
 const historySearch = document.querySelector("#history-search");
 const historySearchClear = document.querySelector("#history-search-clear");
+
+// Filter elements
+const filterInputSource = document.querySelector("#filter-input-source");
+const filterPrediction = document.querySelector("#filter-prediction");
+const filterOutcome = document.querySelector("#filter-outcome");
+const filterDate = document.querySelector("#filter-date");
 const historyPagination = document.querySelector("#history-pagination");
 const historyPaginationSummary = document.querySelector("#history-pagination-summary");
 const historyDeleteModal = document.querySelector("#history-delete-modal");
@@ -184,27 +190,69 @@ const getHistoryValidationMeta = (entry) => {
 
 const getFilteredHistoryEntries = (query = "") => {
   const normalizedQuery = query.trim().toLowerCase();
+  const sourceFilter = filterInputSource?.value || "";
+  const predictionFilter = filterPrediction?.value || "";
+  const outcomeFilter = filterOutcome?.value || "";
+  const dateFilter = filterDate?.value || "";
+
   const sortedEntries = [...historyEntries].sort((a, b) => new Date(b.analyzedAt) - new Date(a.analyzedAt));
 
   return sortedEntries.filter((entry) => {
-    if (!normalizedQuery) return true;
-
     const validation = getHistoryValidationMeta(entry);
 
-    return [
-      entry.patient,
-      entry.id,
-      entry.source,
-      entry.result,
-      validation.actualOutcome,
-      validation.statusLabel,
-      `${entry.age}`,
-      entry.sex,
-      formatDate(entry.analyzedAt, true),
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalizedQuery);
+    // Search filter
+    if (normalizedQuery) {
+      const searchMatch = [
+        entry.patient,
+        entry.id,
+        entry.predictedByName || "",
+        entry.source,
+        entry.result,
+        validation.actualOutcome,
+        validation.statusLabel,
+        `${entry.age}`,
+        entry.sex,
+        formatDate(entry.analyzedAt, true),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery);
+      if (!searchMatch) return false;
+    }
+
+    // Source filter
+    if (sourceFilter && entry.source !== sourceFilter) return false;
+
+    // Prediction filter
+    if (predictionFilter && entry.result !== predictionFilter) return false;
+
+    // Outcome filter
+    if (outcomeFilter) {
+      if (outcomeFilter === "Awaiting confirmation") {
+        if (validation.actualOutcome !== "Awaiting confirmation") return false;
+      } else if (outcomeFilter === "Relapse") {
+        if (validation.actualOutcome !== "Relapse") return false;
+      } else if (outcomeFilter === "No Relapse") {
+        if (validation.actualOutcome !== "No Relapse") return false;
+      } else if (outcomeFilter === "Correct") {
+        if (validation.statusLabel !== "Correct") return false;
+      } else if (outcomeFilter === "Incorrect") {
+        if (validation.statusLabel !== "Incorrect") return false;
+      }
+    }
+
+    // Date filter
+    if (dateFilter) {
+      const entryDate = new Date(entry.analyzedAt);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (dateFilter === "today" && entryDate.toDateString() !== today.toDateString()) return false;
+      if (dateFilter === "week" && (today - entryDate) > 7 * 24 * 60 * 60 * 1000) return false;
+      if (dateFilter === "month" && (today - entryDate) > 30 * 24 * 60 * 60 * 1000) return false;
+    }
+
+    return true;
   });
 };
 
@@ -300,7 +348,7 @@ const renderHistoryRows = () => {
   if (!pageData.items.length) {
     const emptyRow = document.createElement("tr");
     emptyRow.innerHTML = `
-      <td colspan="8">
+      <td colspan="9">
         <div class="history-empty-state">
           <strong>No predictions found</strong>
           <span>Try another patient name, identifier, source, or validation status.</span>
@@ -326,10 +374,11 @@ const renderHistoryRows = () => {
       </td>
       <td>${entry.age} years / ${entry.sex}</td>
       <td>${formatDate(entry.analyzedAt, true)}</td>
+      <td>${formatPredictedByDisplay(entry.predictedByName)}</td>
       <td>${entry.source}</td>
       <td><span class="prediction-badge ${badge.tone}">${badge.label}</span></td>
       <td>
-        <span class="probability-cell">
+        <span class="probability-cell ${entry.result === 'Relapse' ? 'prob-relapse' : 'prob-stable'}">
           <strong>${entry.probability}%</strong>
           <span class="probability-bar"><i style="width:${entry.probability}%"></i></span>
         </span>
@@ -363,6 +412,10 @@ const renderHistoryRows = () => {
         </div>
       </td>
     `;
+    row.style.cursor = "pointer";
+    row.addEventListener("dblclick", () => {
+      window.location.href = `prediction-details.html?id=${encodeURIComponent(entry.id)}`;
+    });
     historyBody.appendChild(row);
   });
 
@@ -472,6 +525,12 @@ if (historySearchClear && historySearch) {
     closeHistorySearch();
   });
 }
+
+// Filter event listeners
+if (filterInputSource) filterInputSource.addEventListener("change", () => { historyCurrentPage = 1; renderHistoryRows(); });
+if (filterPrediction) filterPrediction.addEventListener("change", () => { historyCurrentPage = 1; renderHistoryRows(); });
+if (filterOutcome) filterOutcome.addEventListener("change", () => { historyCurrentPage = 1; renderHistoryRows(); });
+if (filterDate) filterDate.addEventListener("change", () => { historyCurrentPage = 1; renderHistoryRows(); });
 
 historyBody?.addEventListener("click", (event) => {
   const deleteButton = event.target.closest("[data-delete-prediction-id]");
