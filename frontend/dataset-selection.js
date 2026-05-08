@@ -795,38 +795,30 @@ const getDataset = () => {
   const requestedId = params.get("upload");
   const uploads = loadUploads();
 
-  console.log("getDataset() called");
-  console.log("requestedId from URL:", requestedId);
-  console.log("uploads from loadUploads():", uploads);
-
   if (requestedId) {
-    const result = getUploadById(requestedId);
-    console.log("getUploadById result:", result);
-    return result;
+    return getUploadById(requestedId);
   }
 
-  console.log("No requestedId, returning first upload:", uploads[0] || null);
   return uploads[0] || null;
 };
 
 const setPendingOutcome = () => {
   latestSelectionResult = null;
-
-  if (outcomeState) outcomeState.classList.remove("relapse", "stable");
-  if (outcomeState) outcomeState.classList.add("awaiting");
-  if (outcomeHeading) outcomeHeading.textContent = "Awaiting Data Input";
-  if (outcomeText) outcomeText.textContent =
+  outcomeState.classList.remove("relapse", "stable");
+  outcomeState.classList.add("awaiting");
+  outcomeHeading.textContent = "Awaiting Data Input";
+  outcomeText.textContent =
     "Select a patient from the uploaded dataset to generate the individualized prediction result.";
-  if (outcomeBadge) outcomeBadge.textContent = "Pending";
-  if (outcomeBadge) outcomeBadge.className = "prediction-badge";
-  if (outcomeProbability) outcomeProbability.textContent = "0%";
-  if (outcomeBar) outcomeBar.style.width = "0%";
-  if (outcomeSummary) outcomeSummary.innerHTML = `
+  outcomeBadge.textContent = "Pending";
+  outcomeBadge.className = "prediction-badge";
+  outcomeProbability.textContent = "0%";
+  outcomeBar.style.width = "0%";
+  outcomeSummary.innerHTML = `
     <strong>Pending analysis</strong>
     <span>Choose a patient row to activate the prediction workflow.</span>
     <span>Probability and explanatory variables will appear after model execution.</span>
   `;
-  if (impactList) impactList.innerHTML =
+  impactList.innerHTML =
     '<div class="impact-empty">Run the prediction to view the most influential variables for this patient.</div>';
   if (printReportButton) {
     printReportButton.hidden = true;
@@ -867,20 +859,11 @@ const renderSelectionSummary = (row) => {
 };
 
 const renderDatasetTable = () => {
-  console.log("renderDatasetTable() called");
-  console.log("dataset:", dataset);
-  console.log("dataset.rows:", dataset?.rows);
-  console.log("dataset.rows.length:", dataset?.rows?.length);
-
   filteredRows = applyClinicalFilters(filterRows(dataset.rows, searchTerm));
-  console.log("filteredRows after filter:", filteredRows);
-
   if (selectedRowId && !filteredRows.some((row) => row.__rowId === selectedRowId)) {
     selectedRowId = "";
   }
   const pageData = paginate(filteredRows, currentPage, 8);
-  console.log("pageData:", pageData);
-
   currentPage = pageData.currentPage;
   updateDatasetFilterStatus(filteredRows.length);
 
@@ -938,35 +921,27 @@ const renderOutcome = (result) => {
   latestSelectionResult = result;
   const badge = predictionBadge(result);
 
-  if (outcomeState) {
-    outcomeState.classList.remove("awaiting", "relapse", "stable");
-    outcomeState.classList.add(result.relapse ? "relapse" : "stable");
-    const selOutcomeCard = outcomeState?.closest(".outcome-card");
-    if (selOutcomeCard) {
-      selOutcomeCard.classList.remove("is-relapse", "is-stable");
-      selOutcomeCard.classList.add(result.relapse ? "is-relapse" : "is-stable");
-    }
-  }
-
-  if (outcomeHeading) outcomeHeading.textContent = badge.label;
-  if (outcomeText) outcomeText.textContent = result.relapse
+  outcomeState.classList.remove("awaiting", "relapse", "stable");
+  outcomeState.classList.add(result.relapse ? "relapse" : "stable");
+  outcomeHeading.textContent = badge.label;
+  outcomeText.textContent = result.relapse
     ? "The selected patient profile indicates a higher probability of relapse and may require closer surveillance."
     : "The selected patient profile indicates a lower probability of relapse under the imported conditions.";
-  if (outcomeBadge) outcomeBadge.textContent = badge.label;
-  if (outcomeBadge) outcomeBadge.className = `prediction-badge ${badge.tone}`;
-  if (outcomeProbability) outcomeProbability.textContent = `${result.probability}%`;
-  if (outcomeBar) outcomeBar.style.width = `${result.probability}%`;
-  if (outcomeSummary) outcomeSummary.innerHTML = `
+  outcomeBadge.textContent = badge.label;
+  outcomeBadge.className = `prediction-badge ${badge.tone}`;
+  outcomeProbability.textContent = `${result.probability}%`;
+  outcomeBar.style.width = `${result.probability}%`;
+  outcomeSummary.innerHTML = `
     <strong>${result.patientName}</strong>
     <span>Consultation reason: ${result.consultationReason}</span>
     <span>Treatment duration: ${result.duration || 0} months</span>
     <span>Predicted outcome: ${badge.label}</span>
   `;
 
-  if (impactList) impactList.innerHTML = "";
+  impactList.innerHTML = "";
 
   if (!result.contributions.length) {
-    if (impactList) impactList.innerHTML =
+    impactList.innerHTML =
       '<div class="impact-empty">No strong explanatory drivers were detected from this patient row.</div>';
     return;
   }
@@ -977,25 +952,19 @@ const renderOutcome = (result) => {
   );
 
   result.contributions.forEach((item) => {
-    if (!impactList) return;
-
     const itemImpact = Math.abs(Number(item.amount) || 0);
     const relativePercent = maxImpact > 0 ? Math.round((itemImpact / maxImpact) * 100) : 0;
     const influence = Math.max(18, Math.min(relativePercent, 100));
     const impactItem = document.createElement("div");
 
-    const tone = item.amount > 0 ? "is-warm" : "is-cool";
-    impactItem.className = "impact-var";
+    impactItem.className = "impact-item";
     impactItem.innerHTML = `
-      <div class="impact-var-head">
-        <span class="impact-var-label">
-          <span class="impact-var-dot ${tone}"></span>
-          ${item.label}
-        </span>
-        <span class="impact-var-meta">${item.amount > 0 ? "Higher relapse risk" : "Lower relapse risk"} · ${influence}%</span>
+      <div class="impact-item-head">
+        <strong>${item.label}</strong>
+        <span>${item.amount > 0 ? "Higher relapse risk" : "Lower relapse risk"} · ${influence}%</span>
       </div>
-      <div class="impact-var-track">
-        <i class="${tone}" style="width:${influence}%; ${impactGradientStyle(influence)}"></i>
+      <div class="impact-bar">
+        <i class="${item.amount > 0 ? "positive" : "negative"}" style="width:${influence}%; ${impactGradientStyle(influence)}"></i>
       </div>
     `;
 
@@ -1115,13 +1084,6 @@ if (runSelectedPredictionButton) {
 
       try {
         const response = await requestImportedPrediction(selectedRow);
-        const predictionId = response?.prediction?.id;
-
-        if (predictionId) {
-          window.location.href = `prediction-details.html?id=${encodeURIComponent(predictionId)}&returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-          return;
-        }
-
         renderOutcome(response.displayResult);
         if (datasetAiServiceWasUnavailable) {
           showDatasetSelectionToast("AI prediction service is available again. Prediction generated successfully.");
@@ -1137,16 +1099,22 @@ if (runSelectedPredictionButton) {
               : "A prediction already exists for this imported patient. Duplicate predictions are not allowed.",
             error?.payload?.existingPredictionId || ""
           );
-        } else {
+        } else if (error?.status === 502) {
           datasetAiServiceWasUnavailable = true;
           openDatasetServiceErrorModal(
             "The AI prediction service is currently unavailable. Please try again later or contact the system administrator."
           );
-        }
-        if (error?.status === 409) {
-          setPendingOutcome();
-          outcomeText.textContent = error instanceof Error ? error.message : "A prediction already exists for this imported patient.";
-        }
+        } else {
+        showDatasetSelectionToast(
+          error instanceof Error ? error.message : "Unable to run the imported patient prediction.",
+          "danger"
+        );
+      }
+      setPendingOutcome();
+      outcomeText.textContent =
+        error instanceof Error
+          ? error.message
+          : "The prediction service is currently unavailable. Please try again.";
     } finally {
       setSelectionPredictionLoadingState(false);
     }

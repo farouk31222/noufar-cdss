@@ -11,9 +11,7 @@ const comingSoonTitle = document.querySelector("#coming-soon-title");
 const comingSoonCopy = document.querySelector("#coming-soon-copy");
 const comingSoonTriggers = document.querySelectorAll("[data-coming-soon-trigger]");
 const comingSoonClosers = document.querySelectorAll("[data-coming-soon-close]");
-const supportTriggers = document.querySelectorAll("[data-support-new-message]");
-const supportAccessUpgradeShell = document.querySelector("[data-standard-access-upgrade-shell]");
-const supportAccessUpgradeTrigger = document.querySelector("[data-support-access-upgrade]");
+const supportTriggers = document.querySelectorAll('.profile-menu-link[href="index.html#support"]');
 const desktopSidebarStorageKey = "noufar-sidebar-collapsed";
 const doctorAuthStorageKey = "noufar-doctor-auth-v1";
 const API_BASE_URL = window.NOUFAR_API_BASE_URL || "http://localhost:5000/api";
@@ -59,24 +57,6 @@ const getDoctorSession = () => {
 
 const clearDoctorSession = () => {
   window.localStorage.removeItem(doctorAuthStorageKey);
-};
-
-const hideDoctorSupportCenterProfileLink = () => {
-  document
-    .querySelectorAll('.profile-menu-link[href="index.html#support"]')
-    .forEach((link) => link.remove());
-};
-
-const getDoctorAccountType = (sessionOrUser) => {
-  const rawType = sessionOrUser?.user?.doctorAccountType ?? sessionOrUser?.doctorAccountType;
-  return rawType === "standard" ? "standard" : "prediction";
-};
-
-const doctorCanRunPredictions = (sessionOrUser) => getDoctorAccountType(sessionOrUser) === "prediction";
-
-const getCurrentPageName = () => {
-  const pathname = window.location.pathname.split("/").pop() || "index.html";
-  return pathname.toLowerCase();
 };
 
 const armDoctorNotificationAudio = () => {
@@ -380,55 +360,7 @@ const requireDoctorSession = () => {
   return session;
 };
 
-const applyDoctorAccessMode = (session) => {
-  const accountType = getDoctorAccountType(session);
-  const canRunPredictions = doctorCanRunPredictions(session);
-  const currentPage = getCurrentPageName();
-  const restrictedPages = new Set([
-    "dashboard.html",
-    "new-prediction.html",
-    "history.html",
-    "prediction-details.html",
-    "dataset-selection.html",
-  ]);
-
-  if (document.body) {
-    document.body.dataset.doctorAccountType = accountType;
-  }
-
-  if (supportAccessUpgradeShell) {
-    const shouldShowAccessUpgrade = accountType === "standard";
-    supportAccessUpgradeShell.hidden = !shouldShowAccessUpgrade;
-    supportAccessUpgradeShell.toggleAttribute("hidden", !shouldShowAccessUpgrade);
-    supportAccessUpgradeShell.style.display = shouldShowAccessUpgrade ? "" : "none";
-  }
-
-  document.querySelectorAll('option[value="Access upgrade request"]').forEach((option) => {
-    option.hidden = accountType !== "standard";
-    option.disabled = accountType !== "standard";
-  });
-
-  document
-    .querySelectorAll(
-      '.sidebar-link[href="dashboard.html"], .sidebar-link[href="new-prediction.html"], .sidebar-link[href="history.html"], .profile-menu-link[href="history.html"]'
-    )
-    .forEach((node) => {
-      const shouldHide = !canRunPredictions;
-      node.hidden = shouldHide;
-      node.toggleAttribute("hidden", shouldHide);
-      node.style.display = shouldHide ? "none" : "";
-    });
-
-  if (!canRunPredictions && restrictedPages.has(currentPage)) {
-    window.location.href = "patients.html";
-  }
-};
-
 let doctorSession = requireDoctorSession();
-
-if (doctorSession) {
-  applyDoctorAccessMode(doctorSession);
-}
 
 if (doctorSession?.token) {
   requestDoctorProfile(doctorSession.token)
@@ -462,7 +394,6 @@ if (doctorSession?.token) {
       };
       window.localStorage.setItem(doctorAuthStorageKey, JSON.stringify(refreshedSession));
       doctorSession = refreshedSession;
-      applyDoctorAccessMode(refreshedSession);
       scheduleSessionTimeout(doctorSession);
     })
     .catch((error) => {
@@ -494,15 +425,6 @@ if (doctorSession?.token) {
 }
 
 if (doctorSession?.user) {
-  hideDoctorSupportCenterProfileLink();
-
-  const formatDoctorDisplayName = (rawName) => {
-    const name = String(rawName || "").trim();
-    if (!name) return "Dr. Doctor";
-    if (/^dr\.?\s+/i.test(name)) return name.replace(/^dr\.?\s+/i, "Dr. ");
-    return `Dr. ${name}`;
-  };
-
   const applyDoctorIdentity = (sessionUser) => {
     const initials = sessionUser.name
     .split(/\s+/)
@@ -521,25 +443,8 @@ if (doctorSession?.user) {
 
     const profileName = document.querySelector(".profile-menu-copy strong");
     const profileMeta = document.querySelector(".profile-menu-copy span");
-    const profileCopy = document.querySelector(".profile-menu-copy");
-    const accountTypeLabel =
-      (sessionUser.doctorAccountType || "prediction") === "standard"
-        ? "Standard doctor"
-        : "Doctor with prediction";
-
-    if (profileName) profileName.textContent = formatDoctorDisplayName(sessionUser.name);
+    if (profileName) profileName.textContent = sessionUser.name;
     if (profileMeta) profileMeta.textContent = sessionUser.specialty || sessionUser.hospital || "Doctor account";
-
-    if (profileCopy) {
-      let badge = profileCopy.querySelector(".profile-access-badge");
-      if (!badge) {
-        badge = document.createElement("span");
-        profileCopy.appendChild(badge);
-      }
-      const isPrediction = (sessionUser.doctorAccountType || "prediction") !== "standard";
-      badge.className = "profile-access-badge" + (isPrediction ? " badge-prediction" : "");
-      badge.textContent = accountTypeLabel;
-    }
   };
 
   applyDoctorIdentity(doctorSession.user);
@@ -548,7 +453,6 @@ if (doctorSession?.user) {
     const nextSession = event.detail || getDoctorSession();
     if (!nextSession?.user) return;
     doctorSession = nextSession;
-    applyDoctorAccessMode(nextSession);
     applyDoctorIdentity(nextSession.user);
     scheduleSessionTimeout(nextSession);
   });
@@ -566,22 +470,6 @@ const escapeNotificationHtml = (value = "") =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
-
-const getInboxPriorityClass = (priority) => {
-  const p = String(priority || "").toLowerCase();
-  if (p === "urgent") return "inbox-tag-red";
-  if (p === "high") return "inbox-tag-orange";
-  if (p === "routine" || p === "low") return "inbox-tag-blue";
-  return "";
-};
-
-const getInboxStatusClass = (status) => {
-  const s = String(status || "").toLowerCase();
-  if (s === "open") return "inbox-tag-green";
-  if (s === "closed" || s === "resolved") return "inbox-tag-gray";
-  if (s === "in progress" || s === "in_progress") return "inbox-tag-purple";
-  return "";
-};
 
 window.showNoufarToast = (message, variant = "success") => {
   let stack = document.getElementById("noufar-toast-stack");
@@ -1118,8 +1006,8 @@ const buildDoctorInboxConversationMarkup = (ticket) => {
         <h2>${escapeNotificationHtml(ticket.subject)}</h2>
         <div class="doctor-inbox-conversation-meta">
           <span>${escapeNotificationHtml(ticket.category)}</span>
-          <span class="${getInboxPriorityClass(ticket.priority)}">${escapeNotificationHtml(ticket.priority)}</span>
-          <span class="${getInboxStatusClass(ticket.status)}">${escapeNotificationHtml(ticket.status)}</span>
+          <span>${escapeNotificationHtml(ticket.priority)}</span>
+          <span>${escapeNotificationHtml(ticket.status)}</span>
         </div>
       </div>
       <div class="doctor-inbox-head-actions">
@@ -1243,8 +1131,8 @@ const renderDoctorInbox = () => {
           <div class="doctor-inbox-thread-footer">
             <div class="doctor-inbox-thread-meta">
               <span>${escapeNotificationHtml(ticket.category)}</span>
-              <span class="${getInboxPriorityClass(ticket.priority)}">${escapeNotificationHtml(ticket.priority)}</span>
-              <span class="${getInboxStatusClass(ticket.status)}">${escapeNotificationHtml(ticket.status)}</span>
+              <span>${escapeNotificationHtml(ticket.priority)}</span>
+              <span>${escapeNotificationHtml(ticket.status)}</span>
             </div>
             <div class="doctor-inbox-thread-card-actions">
               <button class="icon-button doctor-thread-delete-button" type="button" data-doctor-thread-delete="${escapeNotificationHtml(ticket.id)}" aria-label="Delete support thread">
@@ -1947,38 +1835,6 @@ if (notificationToggles.length) {
 
 const ensureDoctorInboxNavigation = () => {
   const sidebarNav = document.querySelector(".sidebar-nav");
-  if (sidebarNav && !sidebarNav.querySelector('a[href="history.html"]')) {
-    const predictionsLink = document.createElement("a");
-    predictionsLink.className = "sidebar-link";
-    if (document.body?.dataset.page === "history") {
-      predictionsLink.classList.add("active");
-    }
-    predictionsLink.href = "history.html";
-    predictionsLink.dataset.label = "Predictions";
-    predictionsLink.innerHTML = `
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M5 12a7 7 0 1 0 2-4.9M5 4v5h5" />
-      </svg>
-      <span>Predictions</span>
-    `;
-    sidebarNav.appendChild(predictionsLink);
-  }
-
-  if (sidebarNav && !sidebarNav.querySelector('a[href="patients.html"]')) {
-    const patientsLink = document.createElement("a");
-    patientsLink.className = "sidebar-link";
-    if (document.body?.dataset.page === "patients") {
-      patientsLink.classList.add("active");
-    }
-    patientsLink.href = "patients.html";
-    patientsLink.dataset.label = "Patients";
-    patientsLink.innerHTML = `
-      <img class="sidebar-icon-image" src="assets/pattients.png" alt="" aria-hidden="true" />
-      <span>Patients</span>
-    `;
-    sidebarNav.appendChild(patientsLink);
-  }
-
   if (sidebarNav && !sidebarNav.querySelector('a[href="doctor-inbox.html"]')) {
     const inboxLink = document.createElement("a");
     inboxLink.className = "sidebar-link";
@@ -1994,23 +1850,6 @@ const ensureDoctorInboxNavigation = () => {
       <span>Inbox</span>
     `;
     sidebarNav.appendChild(inboxLink);
-  }
-
-  if (sidebarNav) {
-    const professionalOrder = [
-      'a.sidebar-link[href="dashboard.html"]',
-      'a.sidebar-link[href="patients.html"]',
-      'a.sidebar-link[href="new-prediction.html"]',
-      'a.sidebar-link[href="history.html"]',
-      'a.sidebar-link[href="doctor-inbox.html"]',
-    ];
-
-    professionalOrder.forEach((selector) => {
-      const link = sidebarNav.querySelector(selector);
-      if (link) {
-        sidebarNav.appendChild(link);
-      }
-    });
   }
 
   document.querySelectorAll(".profile-menu-links").forEach((menu) => {
@@ -2115,7 +1954,6 @@ if (supportTriggers.length) {
             <span>Support category</span>
             <select id="support-request-category" required>
               <option value="">Select a category</option>
-              <option value="Access upgrade request">Access upgrade request</option>
               <option value="Prediction workflow">Prediction workflow</option>
               <option value="Dataset import">Dataset import</option>
               <option value="Account settings">Account settings</option>
@@ -2227,26 +2065,7 @@ if (supportTriggers.length) {
     const sessionUser = getDoctorSession()?.user || doctorSession?.user || {};
     if (supportContactInput) supportContactInput.value = sessionUser.name || "Doctor account";
     if (supportEmailInput) supportEmailInput.value = sessionUser.email || "";
-    if (supportAccessUpgradeShell) {
-      const shouldShowAccessUpgrade = getDoctorAccountType(sessionUser) === "standard";
-      supportAccessUpgradeShell.hidden = !shouldShowAccessUpgrade;
-      supportAccessUpgradeShell.toggleAttribute("hidden", !shouldShowAccessUpgrade);
-      supportAccessUpgradeShell.style.display = shouldShowAccessUpgrade ? "" : "none";
-    }
-    if (supportCategoryInput) {
-      const upgradeOption = supportCategoryInput.querySelector('option[value="Access upgrade request"]');
-      const shouldShowUpgradeOption = getDoctorAccountType(sessionUser) === "standard";
-      if (upgradeOption) {
-        upgradeOption.hidden = !shouldShowUpgradeOption;
-        upgradeOption.disabled = !shouldShowUpgradeOption;
-      }
-      if (!shouldShowUpgradeOption && supportCategoryInput.value === "Access upgrade request") {
-        supportCategoryInput.value = "";
-      }
-    }
   };
-
-  syncSupportIdentity();
 
   const closeSupportModal = () => {
     supportModal.hidden = true;
@@ -2262,28 +2081,16 @@ if (supportTriggers.length) {
     const subjectInput = supportForm?.querySelector('input[placeholder="Briefly describe your request"]');
     if (supportCategoryInput && preset.category) {
       supportCategoryInput.value = preset.category;
-    } else if (supportCategoryInput) {
-      supportCategoryInput.value = "";
     }
     if (supportPriorityInput && preset.priority) {
       supportPriorityInput.value = preset.priority;
-    } else if (supportPriorityInput) {
-      supportPriorityInput.value = "";
     }
     if (subjectInput && preset.subject) {
       subjectInput.value = preset.subject;
-    } else if (subjectInput) {
-      subjectInput.value = "";
     }
     if (supportMessageInput && preset.message) {
       supportMessageInput.value = preset.message;
-    } else if (supportMessageInput) {
-      supportMessageInput.value = "";
     }
-    if (supportFileInput) {
-      supportFileInput.value = "";
-    }
-    syncSupportRequestAttachmentState();
     supportMessageInput?.focus();
   };
 
@@ -2318,17 +2125,6 @@ if (supportTriggers.length) {
         if (profileToggle) profileToggle.setAttribute("aria-expanded", "false");
       }
       openSupportModal();
-    });
-  });
-
-  supportAccessUpgradeTrigger?.addEventListener("click", (event) => {
-    event.preventDefault();
-    openSupportModal({
-      category: "Access upgrade request",
-      priority: "High",
-      subject: "Request upgrade to Doctor with prediction",
-      message:
-        "Hello admin, I would like to request an upgrade from Standard doctor to Doctor with prediction so I can run medical predictions in addition to managing patient clinical entries.",
     });
   });
 

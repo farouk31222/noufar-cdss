@@ -5,6 +5,8 @@ const TRI_TOGGLE_STATES = ["Yes", "Not measured", "No"];
 
 const patientsBody = document.querySelector("#patients-body");
 const patientsEmpty = document.querySelector("#patients-empty");
+const patientsSearch = document.querySelector("#patients-search");
+const patientsFilter = document.querySelector("#patients-filter");
 const patientsPagination = document.querySelector("#patients-pagination");
 const patientsPaginationSummary = document.querySelector("#patients-pagination-summary");
 const addPatientModal = document.querySelector("#add-patient-modal");
@@ -33,43 +35,6 @@ const duplicatePatientPredictionCloseControls = document.querySelectorAll("[data
 const patientToggleInputs = Array.from(addPatientForm?.querySelectorAll(".toggle-switch-input") || []);
 const patientRangeInputs = Array.from(addPatientForm?.querySelectorAll(".range-input") || []);
 const patientChipSelectGroups = Array.from(addPatientForm?.querySelectorAll(".chip-select-group") || []);
-
-const getPatientsCurrentDoctorIdentity = () => {
-  try {
-    const raw = window.localStorage.getItem(patientsDoctorAuthStorageKey);
-    const session = raw ? JSON.parse(raw) : null;
-    const user = session?.user || {};
-    return {
-      name: String(user.name || "").trim(),
-      email: String(user.email || "").trim(),
-    };
-  } catch (error) {
-    return { name: "", email: "" };
-  }
-};
-
-const formatPredictedByDisplay = (value) => {
-  const rawName = String(value || "").trim();
-  if (!rawName) return "Unknown user";
-
-  const current = getPatientsCurrentDoctorIdentity();
-  const normalizedRaw = rawName.toLowerCase();
-  const normalizedName = current.name.toLowerCase();
-  const normalizedEmail = current.email.toLowerCase();
-
-  if (
-    (normalizedName && normalizedRaw === normalizedName) ||
-    (normalizedEmail && normalizedRaw === normalizedEmail)
-  ) {
-    return "Me";
-  }
-
-  if (/^dr\.?\s+/i.test(rawName)) {
-    return rawName;
-  }
-
-  return `Dr. ${rawName}`;
-};
 
 const normalizeTriToggleValue = (value) => {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -1041,67 +1006,23 @@ const openModal = (modal) => {
 };
 
 const getFilteredPatients = () => {
-  // Get filter values from DOM
-  const searchText = document.getElementById("search-input")?.value?.toLowerCase() || "";
-  const predictionFilter = document.getElementById("filter-prediction")?.value || "";
-  const sourceFilter = document.getElementById("filter-source")?.value || "";
-  const dateFilter = document.getElementById("filter-date")?.value || "";
+  const query = patientsSearch?.value?.trim().toLowerCase() ?? "";
+  const filter = patientsFilter?.value ?? "all";
 
-  let results = [...patientsRegistry];
+  return [...patientsRegistry]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .filter((entry) => {
+      const sourceLabel = String(entry.source || "").toLowerCase();
+      const summary = `${entry.patientName} ${entry.consultationReason} ${entry.savedByName} ${sourceLabel}`.toLowerCase();
+      const matchesQuery = !query || summary.includes(query);
 
-  // 1. SEARCH FILTER
-  if (searchText) {
-    results = results.filter(entry => {
-      const name = String(entry.patientName || "").toLowerCase();
-      const id = String(entry.id || "").toLowerCase();
-      const consultation = String(entry.consultationReason || "").toLowerCase();
+      const matchesFilter =
+        filter === "all" ||
+        (filter === "manual" && sourceLabel === "manual") ||
+        (filter === "import" && sourceLabel !== "manual");
 
-      return name.includes(searchText) ||
-             id.includes(searchText) ||
-             consultation.includes(searchText);
+      return matchesQuery && matchesFilter;
     });
-  }
-
-  // 2. PREDICTION FILTER
-  if (predictionFilter) {
-    results = results.filter(entry => {
-      const hasPrediction = Boolean(getPredictionForPatientName(entry.patientName));
-      if (predictionFilter === "predicted") return hasPrediction;
-      if (predictionFilter === "not-predicted") return !hasPrediction;
-      return true;
-    });
-  }
-
-  // 3. SOURCE FILTER
-  if (sourceFilter) {
-    results = results.filter(entry => {
-      const source = String(entry.source || "").toLowerCase();
-      if (sourceFilter === "manual") return source === "manual";
-      if (sourceFilter === "import") return source !== "manual";
-      return true;
-    });
-  }
-
-  // 4. DATE FILTER
-  if (dateFilter) {
-    const now = new Date();
-    results = results.filter(entry => {
-      const entryDate = new Date(entry.createdAt || 0);
-      const diffTime = now - entryDate;
-      const diffDays = diffTime / (1000 * 60 * 60 * 24);
-
-      if (dateFilter === "today") return diffDays < 1;
-      if (dateFilter === "week") return diffDays < 7;
-      if (dateFilter === "month") return diffDays < 30;
-      if (dateFilter === "all") return true;
-      return true;
-    });
-  }
-
-  // Sort by date (newest first)
-  return results.sort((a, b) => {
-    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-  });
 };
 
 const paginatePatients = (items, page = 1, pageSize = PATIENTS_PAGE_SIZE) => {
@@ -1135,41 +1056,36 @@ const buildPatientsPaginationItems = (currentPage, totalPages) => {
 };
 
 const buildPatientsRow = (entry) => {
-  const existingPrediction = getPredictionForPatientName(entry.patientName);
+  const existingPrediction = patientsCanRunPredictions() ? getPredictionForPatientName(entry.patientName) : null;
   const predictionAction = patientsCanRunPredictions()
     ? existingPrediction
-      ? `<button class="btn-patient-action primary" type="button" data-view-prediction="${String(existingPrediction._id || existingPrediction.id || "")}">View Prediction</button>`
-      : `<button class="btn-patient-action success" type="button" data-run-patient="${entry.id}">Run Prediction</button>`
+      ? `<button class="mini-btn" type="button" data-view-prediction="${String(existingPrediction._id || existingPrediction.id || "")}">View Prediction</button>`
+      : `<button class="mini-btn" type="button" data-run-patient="${entry.id}">Run Prediction</button>`
     : "";
 
-  const sourceClass = entry.source === "Manual" ? "pt-source-manual" : "pt-source-import";
-  const hasPrediction = Boolean(existingPrediction);
-  const predStatusClass = hasPrediction ? "pt-pred-done" : "pt-pred-pending";
-  const predStatusLabel = hasPrediction ? "Predicted" : "Not yet";
-  const isPredictionAccount = patientsCanRunPredictions();
-
   const row = document.createElement("tr");
-  row.className = "pt-row";
-  row.dataset.predicted = hasPrediction ? "yes" : "no";
   row.innerHTML = `
     <td>
-      <div class="patient-name">${entry.patientName}</div>
-      <div class="patient-id">${entry.id}</div>
+      <div class="patient-meta">
+        <strong>${entry.patientName}</strong>
+        <span>${entry.id}</span>
+      </div>
     </td>
-    <td class="pt-cell-muted">${entry.age} yrs / ${entry.sex}</td>
+    <td>${entry.age} years / ${entry.sex}</td>
     <td>
-      <div class="clinical-summary-label">${entry.consultationReason}</div>
-      <div class="clinical-summary-detail">${entry.duration ? `${entry.duration} months treatment` : "No treatment duration"}</div>
+      <div class="patient-meta">
+        <strong>${entry.consultationReason}</strong>
+        <span>${entry.duration ? `${entry.duration} months treatment` : "Duration not recorded"}</span>
+      </div>
     </td>
-    <td><span class="pt-source-badge ${sourceClass}">${entry.source}</span></td>
-    <td><span class="pt-pred-badge ${predStatusClass}">${predStatusLabel}</span></td>
-    <td class="pt-cell-muted">${formatPredictedByDisplay(entry.savedByName)}</td>
-    <td class="pt-cell-muted pt-cell-date">${formatDate(entry.createdAt, true)}</td>
+    <td>${entry.source}</td>
+    <td>${entry.savedByName}</td>
+    <td>${formatDate(entry.createdAt, true)}</td>
     <td>
       <div class="patients-row-actions">
-        <button class="btn-patient-action" type="button" data-view-patient="${entry.id}">View Clinical Entry</button>
+        <button class="mini-btn" type="button" data-view-patient="${entry.id}">View Clinical Entry</button>
         ${predictionAction}
-        <button class="btn-patient-action danger" type="button" data-delete-patient="${entry.id}">Delete</button>
+        <button class="mini-btn mini-btn-danger" type="button" data-delete-patient="${entry.id}">Delete</button>
       </div>
     </td>
   `;
@@ -1258,12 +1174,8 @@ const updatePatientsSummary = (pageData, query = "") => {
 
 const renderPatients = () => {
   if (!patientsBody) return;
-  if (!patientsRegistry || patientsRegistry.length === 0) {
-    patientsBody.innerHTML = "";
-    if (patientsEmpty) patientsEmpty.hidden = false;
-    return;
-  }
 
+  const query = patientsSearch?.value?.trim() || "";
   const entries = getFilteredPatients();
   const pageData = paginatePatients(entries, patientsCurrentPage, PATIENTS_PAGE_SIZE);
   patientsCurrentPage = pageData.currentPage;
@@ -1277,7 +1189,7 @@ const renderPatients = () => {
     patientsEmpty.hidden = pageData.totalItems > 0;
   }
 
-  updatePatientsSummary(pageData, "");
+  updatePatientsSummary(pageData, query);
   renderPatientsPagination(pageData.currentPage, pageData.totalPages, pageData.totalItems);
 };
 
@@ -1288,7 +1200,7 @@ const openPatientDetails = (patientId) => {
   activePatientId = patientId;
 
   patientDetailsTitle.textContent = patient.patientName;
-  patientDetailsCopy.textContent = `Saved ${formatDate(patient.createdAt, true)} by ${formatPredictedByDisplay(patient.savedByName)}.`;
+  patientDetailsCopy.textContent = `Saved ${formatDate(patient.createdAt, true)} by ${patient.savedByName}.`;
   patientDetailsContent.innerHTML = buildPatientDetailsMarkup(patient);
 
   openModal(patientDetailsModal);
@@ -1358,46 +1270,13 @@ const startPredictionFromPatient = async (patientId) => {
   window.location.href = "new-prediction.html?patientDraft=1";
 };
 
-const normalizePredictionAsPatient = (pred = {}) => ({
-  id: String(pred._id || pred.id || ""),
-  patientName: pred.patientName || pred.patient || "Unknown patient",
-  age: Number(pred.age) || 0,
-  sex: pred.sex || "Not specified",
-  consultationReason: pred.consultationReason || pred.inputData?.consultationReason || "Not specified",
-  duration: Number(pred.duration ?? pred.inputData?.duration) || 0,
-  source: "Prediction History",
-  savedByName: pred.doctorName || pred.savedByName || "Unknown user",
-  createdAt: pred.analyzedAt || pred.createdAt || new Date().toISOString(),
-  inputData: pred.inputData || {},
-});
-
 const hydratePatients = async () => {
   try {
     const entries = await requestPatients();
+    predictionsRegistry = patientsCanRunPredictions() ? await requestPredictions() : [];
     patientsRegistry = entries.map((entry) => normalizePatientEntry(entry));
-    console.log("✅ Loaded patients:", patientsRegistry.length);
-
-    if (patientsCanRunPredictions()) {
-      try { predictionsRegistry = await requestPredictions(); } catch (_) { predictionsRegistry = []; }
-
-      // Merge predictions that don't have a matching patient entry
-      const existingNames = new Set(
-        patientsRegistry.map((p) => String(p.patientName).trim().toLowerCase())
-      );
-      predictionsRegistry.forEach((pred) => {
-        const name = String(pred.patientName || pred.patient || "").trim().toLowerCase();
-        if (name && !existingNames.has(name)) {
-          patientsRegistry.push(normalizePredictionAsPatient(pred));
-          existingNames.add(name);
-        }
-      });
-    } else {
-      predictionsRegistry = [];
-    }
-
     renderPatients();
   } catch (error) {
-    console.error("❌ Error loading patients:", error);
     showPatientsToast(error instanceof Error ? error.message : "Unable to load patient registry.", "danger");
   }
 };
@@ -1558,23 +1437,11 @@ confirmDeletePatient?.addEventListener("click", async () => {
   }
 });
 
-// Attach event listeners for search and filters
-document.getElementById("search-input")?.addEventListener("input", () => {
+patientsSearch?.addEventListener("input", () => {
   patientsCurrentPage = 1;
   renderPatients();
 });
-
-document.getElementById("filter-prediction")?.addEventListener("change", () => {
-  patientsCurrentPage = 1;
-  renderPatients();
-});
-
-document.getElementById("filter-source")?.addEventListener("change", () => {
-  patientsCurrentPage = 1;
-  renderPatients();
-});
-
-document.getElementById("filter-date")?.addEventListener("change", () => {
+patientsFilter?.addEventListener("change", () => {
   patientsCurrentPage = 1;
   renderPatients();
 });
@@ -1619,14 +1486,4 @@ initPatientManualRangeEditors();
 patientChipSelectGroups.forEach(initializePatientChipSelect);
 resetPatientFormState();
 syncPatientFormMode();
-
-// Hide Source + Prediction columns for standard accounts
-if (!patientsCanRunPredictions()) {
-  const ths = document.querySelectorAll(".patients-results-table thead th");
-  ths.forEach((th) => {
-    const text = th.textContent.trim().toLowerCase();
-    if (text === "source" || text === "prediction") th.hidden = true;
-  });
-}
-
 hydratePatients();

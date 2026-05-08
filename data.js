@@ -170,24 +170,6 @@ const formatDate = (value, withTime = false) => {
   return `${base} ${time}`;
 };
 
-const formatPredictedByDisplay = (value) => {
-  const rawName = String(value || "").trim();
-  if (!rawName) return "Unknown user";
-
-  try {
-    const raw = window.localStorage.getItem("noufar-doctor-auth-v1");
-    const session = raw ? JSON.parse(raw) : null;
-    const user = session?.user || {};
-    const name = String(user.name || "").trim().toLowerCase();
-    const email = String(user.email || "").trim().toLowerCase();
-    const normalized = rawName.toLowerCase();
-    if ((name && normalized === name) || (email && normalized === email)) return "Me";
-  } catch (_) {}
-
-  if (/^dr\.?\s+/i.test(rawName)) return rawName;
-  return `Dr. ${rawName}`;
-};
-
 const getDashboardStats = () => {
   const relapse = patientPredictions.filter((entry) => entry.result === "Relapse").length;
   const noRelapse = patientPredictions.length - relapse;
@@ -256,16 +238,9 @@ const getPredictionBadge = (entry) => {
     };
   }
 
-  if (entry.probability >= 70) {
-    return {
-      label: "High Risk Relapse",
-      tone: "relapse",
-    };
-  }
-
   return {
-    label: "Elevated Risk",
-    tone: "warning",
+    label: "High Risk Relapse",
+    tone: "relapse",
   };
 };
 

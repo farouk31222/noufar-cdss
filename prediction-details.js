@@ -26,9 +26,11 @@ const validationModalSummary = document.querySelector("#detail-validation-modal-
 const validationOutcomeSelect = document.querySelector("#detail-validation-outcome");
 const validationPreviewNode = document.querySelector("#detail-validation-preview");
 const confirmValidationResultButton = document.querySelector("#confirm-validation-result");
+const outcomePanelNode = document.querySelector(".details-outcome-panel");
 const detailToggleInputs = Array.from(document.querySelectorAll(".detail-toggle-input"));
 const detailRangeInputs = Array.from(document.querySelectorAll(".detail-range-input"));
 const detailChipSelectGroups = Array.from(document.querySelectorAll(".detail-chip-select-group"));
+const DETAIL_TRI_TOGGLE_STATES = ["Yes", "Not measured", "No"];
 const predictionDetailsAuthStorageKey = "noufar-doctor-auth-v1";
 const predictionDetailsApiBaseUrl = window.NOUFAR_API_BASE_URL || "http://localhost:5000/api";
 
@@ -136,6 +138,21 @@ const updatePredictionDetailsEntry = async (id, payload) => {
 
   if (!response.ok) {
     throw new Error(data?.message || "Unable to save the confirmed outcome.");
+  }
+
+  return data;
+};
+
+const deletePredictionDetailsEntry = async (id) => {
+  const response = await fetch(`${predictionDetailsApiBaseUrl}/predictions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: getPredictionDetailsAuthHeaders(),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Unable to delete this prediction record.");
   }
 
   return data;
@@ -371,15 +388,23 @@ const normalizeDetailScintigraphy = (value) => {
   return String(value ?? "").trim();
 };
 
+const normalizeDetailNumericOrNotMeasured = (value, fallback) => {
+  if (String(value ?? "").trim().toLowerCase() === "not measured") {
+    return "Not measured";
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const normalizeDetailProfile = (profile, entry) => ({
   ...defaultDetailProfile,
   ...profile,
-  age: Number(profile?.age ?? entry.age ?? defaultDetailProfile.age),
-  antiTpoTotal: Number(profile?.antiTpoTotal ?? defaultDetailProfile.antiTpoTotal),
-  tsiLevel: Number(profile?.tsiLevel ?? defaultDetailProfile.tsiLevel),
-  tsh: Number(profile?.tsh ?? defaultDetailProfile.tsh),
-  ft4: Number(profile?.ft4 ?? defaultDetailProfile.ft4),
-  duration: Number(profile?.duration ?? defaultDetailProfile.duration),
+  age: normalizeDetailNumericOrNotMeasured(profile?.age ?? entry.age, defaultDetailProfile.age),
+  antiTpoTotal: normalizeDetailNumericOrNotMeasured(profile?.antiTpoTotal, defaultDetailProfile.antiTpoTotal),
+  tsiLevel: normalizeDetailNumericOrNotMeasured(profile?.tsiLevel, defaultDetailProfile.tsiLevel),
+  tsh: normalizeDetailNumericOrNotMeasured(profile?.tsh, defaultDetailProfile.tsh),
+  ft4: normalizeDetailNumericOrNotMeasured(profile?.ft4, defaultDetailProfile.ft4),
+  duration: normalizeDetailNumericOrNotMeasured(profile?.duration, defaultDetailProfile.duration),
   therapy: profile?.therapy ?? profile?.treatment ?? defaultDetailProfile.therapy,
   radioactiveIodine:
     profile?.radioactiveIodine ?? profile?.rai ?? defaultDetailProfile.radioactiveIodine,
@@ -436,42 +461,47 @@ const getGeneratedDetailProfile = (entry) => {
 const buildDetailProfileFromInputData = (entry) => {
   const input = entry?.inputData;
   if (!input || typeof input !== "object") return null;
-  const asYesNo = (value) => (value === true || value === "Yes" || value === "true" ? "Yes" : "No");
+  const asTriValue = (value) => {
+    const normalized = String(value ?? "").trim().toLowerCase();
+    if (value === true || normalized === "yes" || normalized === "true") return "Yes";
+    if (value === false || normalized === "no" || normalized === "false") return "No";
+    return "Not measured";
+  };
 
   return normalizeDetailProfile(
     {
-      age: Number(input.age ?? entry.age ?? defaultDetailProfile.age),
+      age: input.age ?? entry.age ?? defaultDetailProfile.age,
       consultationReason: normalizeDetailConsultationReason(
         input.consultationReason ?? input.consultReason ?? entry.consultationReason
       ),
-      stress: asYesNo(input.stress),
-      palpitations: asYesNo(input.palpitations),
-      spp: asYesNo(input.spp),
-      amg: asYesNo(input.amg),
-      diarrhea: asYesNo(input.diarrhea),
-      tremors: asYesNo(input.tremors),
-      agitation: asYesNo(input.agitation),
-      moodDisorder: asYesNo(input.moodDisorder),
-      sleepDisorder: asYesNo(input.sleepDisorder),
-      sweating: asYesNo(input.sweating ?? input.excessSweating),
-      heatIntolerance: asYesNo(input.heatIntolerance),
-      muscleWeakness: asYesNo(input.muscleWeakness),
-      goiter: asYesNo(input.goiter),
+      stress: asTriValue(input.stress),
+      palpitations: asTriValue(input.palpitations),
+      spp: asTriValue(input.spp),
+      amg: asTriValue(input.amg),
+      diarrhea: asTriValue(input.diarrhea),
+      tremors: asTriValue(input.tremors),
+      agitation: asTriValue(input.agitation),
+      moodDisorder: asTriValue(input.moodDisorder),
+      sleepDisorder: asTriValue(input.sleepDisorder),
+      sweating: asTriValue(input.sweating ?? input.excessSweating),
+      heatIntolerance: asTriValue(input.heatIntolerance),
+      muscleWeakness: asTriValue(input.muscleWeakness),
+      goiter: asTriValue(input.goiter),
       goiterClass: input.goiterClassification || defaultDetailProfile.goiterClass,
-      tsh: Number(input.tsh ?? defaultDetailProfile.tsh),
-      ft4: Number(input.ft4 ?? defaultDetailProfile.ft4),
+      tsh: input.tsh ?? defaultDetailProfile.tsh,
+      ft4: input.ft4 ?? defaultDetailProfile.ft4,
       antiTpo: input.antiTPO || defaultDetailProfile.antiTpo,
-      antiTpoTotal: Number(input.antiTPOtotal ?? defaultDetailProfile.antiTpoTotal),
+      antiTpoTotal: input.antiTPOtotal ?? defaultDetailProfile.antiTpoTotal,
       antiTg: input.antiTg || defaultDetailProfile.antiTg,
       tsi: input.TSI || defaultDetailProfile.tsi,
-      tsiLevel: Number(input.TSIlevel ?? defaultDetailProfile.tsiLevel),
+      tsiLevel: input.TSIlevel ?? defaultDetailProfile.tsiLevel,
       ultrasound: normalizeDetailUltrasound(input.ultrasound),
       scintigraphy: normalizeDetailScintigraphy(input.scintigraphy),
       therapy: input.therapy || defaultDetailProfile.therapy,
-      duration: Number(input.duration ?? entry.duration ?? defaultDetailProfile.duration),
-      blockReplace: asYesNo(input.blockReplace),
-      surgery: asYesNo(input.surgery),
-      radioactiveIodine: asYesNo(input.radioactiveIodine),
+      duration: input.duration ?? entry.duration ?? defaultDetailProfile.duration,
+      blockReplace: asTriValue(input.blockReplace),
+      surgery: asTriValue(input.surgery),
+      radioactiveIodine: asTriValue(input.radioactiveIodine),
     },
     entry
   );
@@ -517,42 +547,51 @@ const formatTimelineDate = (date) =>
   });
 
 const buildTimeline = (entry) => {
-  const approvalCopy =
-    entry.result === "Relapse"
-      ? "Flagged for accelerated endocrine follow-up with elevated relapse probability."
-      : "Published as a lower-risk profile for routine review planning.";
+  const createdAt = entry.createdAt ? new Date(entry.createdAt) : null;
+  const executedAt = entry.analyzedAt ? new Date(entry.analyzedAt) : createdAt;
+  const updatedAt = entry.updatedAt ? new Date(entry.updatedAt) : executedAt;
+  const validatedAt = entry.validationRecordedAt ? new Date(entry.validationRecordedAt) : null;
 
-  const timeline = [
-    {
+  const timeline = [];
+
+  if (createdAt) {
+    timeline.push({
       title: "Clinical data captured",
-      copy: `${entry.source} intake completed and mapped into the physician review workspace.`,
-      date: formatTimelineDate(addDays(entry.analyzedAt, -2)),
-    },
-    {
-      title: "Prediction model executed",
-      copy: `Relapse screening completed for ${entry.patient} with full probability scoring.`,
-      date: formatTimelineDate(addDays(entry.analyzedAt, -1)),
-    },
-    {
-      title: "Specialist review prepared",
-      copy: "Most influential variables and patient-level interpretation assembled for clinical reading.",
-      date: formatTimelineDate(new Date(entry.analyzedAt)),
-    },
-    {
-      title: "Outcome shared",
-      copy: approvalCopy,
-      date: formatTimelineDate(addDays(entry.analyzedAt, 1)),
-    },
-  ];
+      copy: `${entry.source} intake completed and stored in the clinical workspace.`,
+      date: formatTimelineDate(createdAt),
+    });
+  }
 
-  if (entry.actualOutcome && entry.validationStatus && entry.validationStatus !== "Pending") {
+  if (executedAt) {
+    timeline.push({
+      title: "Prediction model executed",
+      copy: `Model run completed for ${entry.patient} with ${entry.probability}% relapse probability.`,
+      date: formatTimelineDate(executedAt),
+    });
+  }
+
+  if (updatedAt) {
+    timeline.push({
+      title: "Specialist review prepared",
+      copy: "Clinical interpretation and influential variables were prepared for physician review.",
+      date: formatTimelineDate(updatedAt),
+    });
+  }
+
+  if (entry.actualOutcome && entry.validationStatus && entry.validationStatus !== "Pending" && validatedAt) {
     timeline.push({
       title: "Real outcome recorded",
       copy:
         entry.validationStatus === "Correct"
-          ? `Doctor confirmed the real result as ${entry.actualOutcome}, matching the prediction.`
-          : `Doctor recorded the real result as ${entry.actualOutcome}, showing the prediction was incorrect.`,
-      date: formatTimelineDate(new Date(entry.validationRecordedAt || addDays(entry.analyzedAt, 14))),
+          ? `Doctor confirmed ${entry.actualOutcome}; prediction marked as correct.`
+          : `Doctor confirmed ${entry.actualOutcome}; prediction marked as incorrect.`,
+      date: formatTimelineDate(validatedAt),
+    });
+  } else {
+    timeline.push({
+      title: "Outcome pending",
+      copy: "Real outcome has not been recorded yet by the doctor.",
+      date: executedAt ? formatTimelineDate(executedAt) : "-",
     });
   }
 
@@ -634,8 +673,10 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-const formatTsh = (value) => `${Number(value).toFixed(2)} mIU/L`;
-const formatFt4 = (value) => `${Number(value).toFixed(2)} ng/dL`;
+const formatTsh = (value) =>
+  String(value ?? "").trim().toLowerCase() === "not measured" ? "Not measured" : `${Number(value).toFixed(2)} mIU/L`;
+const formatFt4 = (value) =>
+  String(value ?? "").trim().toLowerCase() === "not measured" ? "Not measured" : `${Number(value).toFixed(2)} ng/dL`;
 
 const clearRerunWarning = () => {
   if (!rerunWarningNode) return;
@@ -660,22 +701,130 @@ const impactGradientStyle = (value) => {
   return `--impact-start: rgb(${start.join(", ")}); --impact-end: rgb(${end.join(", ")});`;
 };
 
+const normalizeDetailTriToggleValue = (value) => {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "yes") return "Yes";
+  if (normalized === "no") return "No";
+  return "Not measured";
+};
+
+const setDetailTriToggleState = (input, nextState) => {
+  if (!input) return;
+  const state = normalizeDetailTriToggleValue(nextState);
+  input.dataset.triState = state;
+  input.value = state;
+  input.checked = state === "Yes";
+
+  const field = input.closest(".toggle-switch-field");
+  if (!field) return;
+  field.querySelectorAll(".tri-toggle-btn").forEach((button) => {
+    const isActive = button.dataset.stateValue === state;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+};
+
+const initDetailTriStateToggles = () => {
+  detailToggleInputs.forEach((input) => {
+    const field = input.closest(".toggle-switch-field");
+    const control = input.closest(".toggle-switch-control");
+    if (!field || !control || field.querySelector(".tri-toggle")) return;
+
+    field.classList.add("tri-toggle-field");
+
+    const tri = document.createElement("div");
+    tri.className = "tri-toggle";
+    tri.setAttribute("role", "group");
+    tri.innerHTML = DETAIL_TRI_TOGGLE_STATES.map(
+      (state) =>
+        `<button type="button" class="tri-toggle-btn" data-state-value="${state}" aria-pressed="false">${state}</button>`
+    ).join("");
+    control.appendChild(tri);
+
+    tri.addEventListener("click", (event) => {
+      const button = event.target.closest(".tri-toggle-btn");
+      if (!button) return;
+      setDetailTriToggleState(input, button.dataset.stateValue);
+      clearRerunWarning();
+    });
+
+    setDetailTriToggleState(input, input.checked ? "Yes" : "Not measured");
+  });
+};
+
+const initDetailNotMeasuredRanges = () => {
+  detailRangeInputs.forEach((input) => {
+    const shell = input.closest(".range-field-shell");
+    const field = input.closest(".slider-field");
+    const fieldLabel = field?.querySelector(":scope > span");
+    if (!shell || !fieldLabel || fieldLabel.querySelector(".range-not-measured")) return;
+
+    const wrapper = document.createElement("span");
+    wrapper.className = "range-not-measured range-not-measured-inline";
+    wrapper.innerHTML = `
+      <input type="checkbox" data-range-not-measured="${input.id}" />
+      <span class="range-not-measured-text">Not measured</span>
+    `;
+    fieldLabel.appendChild(wrapper);
+
+    const toggleButton = wrapper.querySelector(".range-not-measured-text");
+    const toggleInput = wrapper.querySelector(`[data-range-not-measured="${input.id}"]`);
+    const applyNotMeasuredState = (enabled) => {
+      input.dataset.notMeasured = enabled ? "true" : "false";
+      if (toggleInput instanceof HTMLInputElement) {
+        toggleInput.checked = enabled;
+      }
+      const target = document.getElementById(input.dataset.rangeTarget || "");
+      if (enabled) {
+        input.dataset.lastMeasuredValue = input.value;
+        input.disabled = true;
+        input.classList.add("is-not-measured");
+        if (target) target.textContent = "Not measured";
+      } else {
+        input.disabled = false;
+        input.classList.remove("is-not-measured");
+        if (input.dataset.lastMeasuredValue) {
+          input.value = input.dataset.lastMeasuredValue;
+        }
+        updateDetailRangePresentation(input);
+      }
+      clearRerunWarning();
+    };
+
+    toggleButton?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const enabled = input.dataset.notMeasured !== "true";
+      applyNotMeasuredState(enabled);
+    });
+    toggleInput?.addEventListener("change", () => {
+      applyNotMeasuredState(Boolean(toggleInput.checked));
+    });
+
+    applyNotMeasuredState(false);
+  });
+};
+
 const updateDetailTogglePresentation = (input) => {
   if (!input) return;
-  const valueLabel = input.closest(".toggle-switch-control")?.querySelector(".toggle-switch-value");
-  if (valueLabel) {
-    valueLabel.textContent = input.checked ? "Yes" : "No";
-  }
+  setDetailTriToggleState(input, input.dataset.triState || (input.checked ? "Yes" : "Not measured"));
 };
 
 const updateDetailRangePresentation = (input) => {
   if (!input) return;
 
+  const target = document.getElementById(input.dataset.rangeTarget || "");
+  if (input.dataset.notMeasured === "true") {
+    input.disabled = true;
+    input.classList.add("is-not-measured");
+    if (target) target.textContent = "Not measured";
+    return;
+  }
+
   const min = Number(input.min || 0);
   const max = Number(input.max || 100);
   const value = Number(input.value || min);
   const decimals = Number(input.dataset.rangeDecimals || 0);
-  const target = document.getElementById(input.dataset.rangeTarget || "");
   const progress = max > min ? ((value - min) / (max - min)) * 100 : 0;
 
   input.style.background = `linear-gradient(90deg, #2d71d3 0%, #63a8ff ${progress}%, rgba(68, 121, 196, 0.18) ${progress}%, rgba(150, 187, 239, 0.24) 100%)`;
@@ -683,6 +832,71 @@ const updateDetailRangePresentation = (input) => {
   if (target) {
     target.textContent = decimals > 0 ? value.toFixed(decimals) : String(Math.round(value));
   }
+};
+
+const commitDetailRangeManualValue = (input, rawValue) => {
+  if (!input) return;
+  if (input.dataset.notMeasured === "true") {
+    showPredictionDetailsToast("Uncheck Not measured first to edit this value.", "danger");
+    return;
+  }
+
+  const min = Number(input.min || 0);
+  const max = Number(input.max || 100);
+  const step = Number(input.step || 1);
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed)) return;
+
+  const clamped = Math.min(max, Math.max(min, parsed));
+  const precision = String(step).includes(".") ? String(step).split(".")[1].length : 0;
+  const snapped = Number((Math.round(clamped / step) * step).toFixed(precision));
+  input.value = String(snapped);
+  updateDetailRangePresentation(input);
+  clearRerunWarning();
+};
+
+const initDetailManualRangeEditors = () => {
+  detailRangeInputs.forEach((input) => {
+    const target = document.getElementById(input.dataset.rangeTarget || "");
+    if (!target || target.dataset.manualEditorBound === "true") return;
+    target.dataset.manualEditorBound = "true";
+    target.classList.add("range-value-display");
+    target.title = "Click to edit value";
+
+    target.addEventListener("click", () => {
+      if (input.dataset.notMeasured === "true") return;
+      const editor = document.createElement("input");
+      editor.type = "number";
+      editor.className = "range-value-editor";
+      editor.min = input.min || "0";
+      editor.max = input.max || "100";
+      editor.step = input.step || "1";
+      editor.value = String(input.value || target.textContent?.trim() || "");
+      target.replaceWith(editor);
+      editor.focus();
+      editor.select();
+
+      const finish = (accept) => {
+        editor.replaceWith(target);
+        if (accept) {
+          commitDetailRangeManualValue(input, editor.value);
+        }
+      };
+
+      editor.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          finish(true);
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          finish(false);
+        }
+      });
+
+      editor.addEventListener("blur", () => finish(true), { once: true });
+    });
+  });
 };
 
 const syncDetailChipSelectGroup = (group, value) => {
@@ -716,6 +930,7 @@ const initializeDetailChipSelect = (group) => {
 
 const formatDetailValue = (key, value) => {
   if (value === null || value === undefined || value === "") return "Not provided";
+  if (String(value ?? "").trim().toLowerCase() === "not measured") return "Not measured";
   if (key === "tsh") return formatTsh(value);
   if (key === "ft4") return formatFt4(value);
   if (key === "antiTpoTotal") return `${Number(value).toFixed(0)}`;
@@ -1125,6 +1340,10 @@ const renderDetails = (entry) => {
   if (outcomeLabelNode) outcomeLabelNode.textContent = entry.result === "Relapse" ? "Will Relapse" : "Will Not Relapse";
   if (outcomeBarNode) outcomeBarNode.style.width = `${entry.probability}%`;
   if (outcomeCopyNode) outcomeCopyNode.textContent = derived.note;
+  if (outcomePanelNode) {
+    outcomePanelNode.classList.remove("outcome-theme-relapse", "outcome-theme-stable");
+    outcomePanelNode.classList.add(entry.result === "Relapse" ? "outcome-theme-relapse" : "outcome-theme-stable");
+  }
 
   if (validationPredictedNode) validationPredictedNode.textContent = validationState.predicted;
   if (validationActualNode) validationActualNode.textContent = validationState.actual;
@@ -1138,12 +1357,19 @@ const renderDetails = (entry) => {
   if (openValidationModalButton) openValidationModalButton.textContent = validationState.actionLabel;
 
   if (impactListNode) {
-    impactListNode.innerHTML = derived.impacts
-      .map(
+    impactListNode.classList.remove("impact-theme-relapse", "impact-theme-stable");
+    impactListNode.classList.add(entry.result === "Relapse" ? "impact-theme-relapse" : "impact-theme-stable");
+    impactListNode.innerHTML = `
+      <header class="impact-card-section-head">
+        <strong>Most impactful variables</strong>
+        <span>Patient-level explanation</span>
+      </header>
+      ${derived.impacts
+        .map(
         (impact) => `
           <article class="impact-card-item">
             <div class="impact-card-head">
-              <strong>${impact.label}</strong>
+              <strong><i class="impact-card-dot" aria-hidden="true"></i>${impact.label}</strong>
               <span>${impact.note} · ${impact.value}%</span>
             </div>
             <div class="impact-card-bar" aria-hidden="true">
@@ -1152,7 +1378,8 @@ const renderDetails = (entry) => {
           </article>
         `
       )
-      .join("");
+      .join("")}
+    `;
   }
 };
 
@@ -1166,8 +1393,7 @@ const populateInlineForm = (profile) => {
     if (!field) return;
 
     if (field instanceof HTMLInputElement && field.type === "checkbox") {
-      field.checked = profile[key] === "Yes";
-      updateDetailTogglePresentation(field);
+      setDetailTriToggleState(field, profile[key]);
       return;
     }
 
@@ -1179,6 +1405,22 @@ const populateInlineForm = (profile) => {
     }
 
     if (field instanceof HTMLInputElement && field.type === "range") {
+      const notMeasuredToggle = document.querySelector(`[data-range-not-measured="${field.id}"]`);
+      const normalizedValue = String(profile[key] ?? "").trim().toLowerCase();
+      if (normalizedValue === "not measured") {
+        field.dataset.notMeasured = "true";
+        if (notMeasuredToggle instanceof HTMLInputElement) {
+          notMeasuredToggle.checked = true;
+        }
+      } else {
+        field.dataset.notMeasured = "false";
+        if (notMeasuredToggle instanceof HTMLInputElement) {
+          notMeasuredToggle.checked = false;
+        }
+        field.disabled = false;
+        field.classList.remove("is-not-measured");
+        field.value = profile[key];
+      }
       updateDetailRangePresentation(field);
     }
   });
@@ -1191,7 +1433,7 @@ const collectRerunProfile = () => {
     if (!field) return;
 
     if (field instanceof HTMLInputElement && field.type === "checkbox") {
-      collected[key] = field.checked ? "Yes" : "No";
+      collected[key] = normalizeDetailTriToggleValue(field.dataset.triState || (field.checked ? "Yes" : "Not measured"));
       return;
     }
 
@@ -1201,10 +1443,11 @@ const collectRerunProfile = () => {
   return {
     ...collected,
     age: Number(collected.age),
-    tsh: Number(collected.tsh),
-    ft4: Number(collected.ft4),
-    antiTpoTotal: Number(collected.antiTpoTotal),
-    tsiLevel: Number(collected.tsiLevel),
+    tsh: document.querySelector("#detail-tsh")?.dataset.notMeasured === "true" ? "Not measured" : Number(collected.tsh),
+    ft4: document.querySelector("#detail-ft4")?.dataset.notMeasured === "true" ? "Not measured" : Number(collected.ft4),
+    antiTpoTotal:
+      document.querySelector("#detail-anti-tpo-total")?.dataset.notMeasured === "true" ? "Not measured" : Number(collected.antiTpoTotal),
+    tsiLevel: document.querySelector("#detail-tsi-level")?.dataset.notMeasured === "true" ? "Not measured" : Number(collected.tsiLevel),
     duration: Number(collected.duration),
   };
 };
@@ -1233,13 +1476,13 @@ const buildRerunPayloadFromProfile = (profile) => {
     muscleWeakness: profile.muscleWeakness,
     goiter: profile.goiter,
     goiterClassification: profile.goiterClass,
-    tsh: Number(profile.tsh),
-    ft4: Number(profile.ft4),
+    tsh: String(profile.tsh || "").toLowerCase() === "not measured" ? "Not measured" : Number(profile.tsh),
+    ft4: String(profile.ft4 || "").toLowerCase() === "not measured" ? "Not measured" : Number(profile.ft4),
     antiTpo: profile.antiTpo,
-    antiTpoTotal: Number(profile.antiTpoTotal),
+    antiTpoTotal: String(profile.antiTpoTotal || "").toLowerCase() === "not measured" ? "Not measured" : Number(profile.antiTpoTotal),
     antiTg: profile.antiTg,
     tsi: profile.tsi,
-    tsiLevel: Number(profile.tsiLevel),
+    tsiLevel: String(profile.tsiLevel || "").toLowerCase() === "not measured" ? "Not measured" : Number(profile.tsiLevel),
     ultrasound: profile.ultrasound,
     scintigraphy: profile.scintigraphy,
     therapy: profile.therapy,
@@ -1358,11 +1601,12 @@ inlineClinicalEntryForm?.addEventListener("change", clearRerunWarning);
 validationOutcomeSelect?.addEventListener("input", updateValidationPreview);
 validationOutcomeSelect?.addEventListener("change", updateValidationPreview);
 
+initDetailTriStateToggles();
+initDetailNotMeasuredRanges();
+initDetailManualRangeEditors();
+
 detailToggleInputs.forEach((input) => {
   updateDetailTogglePresentation(input);
-  input.addEventListener("change", () => {
-    updateDetailTogglePresentation(input);
-  });
 });
 
 detailRangeInputs.forEach((input) => {
@@ -1451,16 +1695,31 @@ confirmValidationResultButton?.addEventListener("click", async () => {
   }
 });
 
-confirmDeletePredictionButton?.addEventListener("click", () => {
+confirmDeletePredictionButton?.addEventListener("click", async () => {
   if (!detailEntry) return;
 
-  delete storedDetailProfiles[detailEntry.id];
-  persistDetailProfiles();
+  const previousLabel = confirmDeletePredictionButton.textContent;
+  confirmDeletePredictionButton.disabled = true;
+  confirmDeletePredictionButton.textContent = "Deleting...";
 
-  const deleted = deletePredictionRecordById(detailEntry.id);
-  if (!deleted) return;
+  try {
+    await deletePredictionDetailsEntry(detailEntry.id);
 
-  window.location.href = "history.html";
+    delete storedDetailProfiles[detailEntry.id];
+    persistDetailProfiles();
+    deletePredictionRecordById(detailEntry.id);
+
+    showPredictionDetailsToast("Prediction deleted successfully.");
+    window.location.href = "history.html";
+  } catch (error) {
+    showPredictionDetailsToast(
+      error instanceof Error ? error.message : "Unable to delete this prediction record.",
+      "danger"
+    );
+  } finally {
+    confirmDeletePredictionButton.disabled = false;
+    confirmDeletePredictionButton.textContent = previousLabel;
+  }
 });
 
 const loadPredictionDetailsPage = async () => {

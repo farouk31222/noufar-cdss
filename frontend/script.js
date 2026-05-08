@@ -125,7 +125,6 @@ const persistDoctorSession = (payload) => {
       name: payload.name,
       email: payload.email,
       role: payload.role,
-      doctorAccountType: payload.doctorAccountType === "standard" ? "standard" : "prediction",
       specialty: payload.specialty,
       hospital: payload.hospital,
       approvalStatus: payload.approvalStatus,
@@ -181,9 +180,7 @@ const requestJson = async (path, options = {}) => {
 };
 
 const redirectAfterAuth = (user) => {
-  const destination =
-    (user?.doctorAccountType || "prediction") === "standard" ? "patients.html" : "dashboard.html";
-  window.location.href = destination;
+  window.location.href = "dashboard.html";
 };
 
 const validateExistingDoctorSession = async () => {
@@ -1123,7 +1120,6 @@ if (registerForm && registerNote) {
     payload.append("email", registerForm.elements.email.value.trim());
     payload.append("password", password);
     payload.append("role", "doctor");
-    payload.append("doctorAccountType", registerForm.elements.doctorAccountType?.value || "standard");
     payload.append("termsAccepted", String(Boolean(registerForm.elements.terms?.checked)));
     payload.append("medicalLicense", uploadFields.medicalLicense.files[0]);
     payload.append("nationalId", uploadFields.nationalId.files[0]);
