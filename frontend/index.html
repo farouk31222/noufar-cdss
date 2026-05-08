@@ -329,18 +329,42 @@
         <div class="benefits-layout">
           <div class="benefits-grid">
             <article class="benefit-card">
+              <span class="benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="8" />
+                  <path d="M12 8v4l3 3" />
+                </svg>
+              </span>
               <h3>Faster decision support</h3>
               <p>Reduce friction between data entry, prediction, and clinical review.</p>
             </article>
             <article class="benefit-card">
+              <span class="benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M2 12h4l2-5 4 10 2-5h8" />
+                </svg>
+              </span>
               <h3>Better patient monitoring</h3>
               <p>Support ongoing follow-up with consistent prediction and tracking workflows.</p>
             </article>
             <article class="benefit-card">
+              <span class="benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="8" y="2" width="8" height="4" rx="1.5" />
+                  <path d="M7 4H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              </span>
               <h3>Structured prediction workflow</h3>
               <p>Guide each case through the same professional process from input to interpretation.</p>
             </article>
             <article class="benefit-card">
+              <span class="benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              </span>
               <h3>Easy for healthcare professionals</h3>
               <p>Present advanced outputs in a clear interface built for doctor usability.</p>
             </article>
@@ -368,10 +392,10 @@
         <div class="section-heading section-heading-split">
           <div class="narrow">
             <p class="eyebrow">Contact and support</p>
-            
+            <h2>Get in touch with our clinical team.</h2>
           </div>
           <div class="benefits-note support-note">
-            
+            <p>Our team supports clinicians and healthcare professionals with onboarding, access setup, and platform guidance. Reach us directly during business hours.</p>
           </div>
         </div>
 
@@ -593,6 +617,37 @@
       </div>
 
       <form class="auth-form" id="register-form">
+        <div class="account-type-block" role="group" aria-labelledby="account-type-title">
+          <div class="account-type-head">
+            <p class="eyebrow">Type de compte</p>
+            <h3 id="account-type-title">Choisissez le profil du médecin à enregistrer.</h3>
+            <p>
+              Sélectionnez le niveau d’accès demandé pour distinguer les médecins dédiés à la saisie
+              clinique et ceux autorisés à lancer des prédictions.
+            </p>
+          </div>
+
+          <div class="account-type-grid">
+            <label class="account-type-card">
+              <input type="radio" name="doctorAccountType" value="standard" checked />
+              <span class="account-type-card-shell">
+                <span class="account-type-badge">Accès standard</span>
+                <strong>Médecin standard</strong>
+                <span>Gère et remplit uniquement les informations des patients.</span>
+              </span>
+            </label>
+
+            <label class="account-type-card">
+              <input type="radio" name="doctorAccountType" value="prediction" />
+              <span class="account-type-card-shell">
+                <span class="account-type-badge">Accès prédiction</span>
+                <strong>Médecin avec prédiction</strong>
+                <span>Gère les patients et peut lancer des prédictions médicales.</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
         <div class="auth-grid">
           <label>
             Full name
@@ -997,10 +1052,8 @@
     </div>
   </footer>
 
-  <script src="/config.js"></script>
-    <script src="password-toggle.js"></script>
-  <script src="/config.js"></script>
-    <script src="script.js"></script>
+  <script src="password-toggle.js"></script>
+  <script src="script.js"></script>
 </body>
 
 </html>

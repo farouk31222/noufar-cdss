@@ -17,7 +17,7 @@
     <link rel="icon" type="image/png" href="assets/noufar-logo.png" />
     <link rel="shortcut icon" href="assets/noufar-logo.png" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="dashboard.css?v=20260502c" />
+    <link rel="stylesheet" href="dashboard.css?v=20260510-14" />
     <style>
       .dataset-page-body {
         overflow-x: hidden;
@@ -44,6 +44,38 @@
       .dataset-page-body .main-content,
       .dataset-page-body .workspace {
         overflow-x: hidden;
+      }
+
+      @media (min-width: 901px) {
+        .dataset-page-body .app-layout {
+          grid-template-columns: minmax(0, 1fr) !important;
+          padding-left: 260px;
+        }
+
+        .dataset-page-body .sidebar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: 260px;
+          min-height: 100vh;
+          z-index: 20;
+          overflow-y: auto;
+          overflow-x: hidden;
+        }
+
+        .dataset-page-body .app-layout.sidebar-collapsed .sidebar {
+          width: 82px;
+        }
+
+        .dataset-page-body .app-layout.sidebar-collapsed {
+          padding-left: 82px;
+        }
+      }
+
+      .dataset-page-body .workspace {
+        position: relative;
+        z-index: 1;
       }
 
       .dataset-page-layout {
@@ -75,6 +107,12 @@
       }
 
       @media (max-width: 1024px) {
+        .dataset-page-body .app-layout,
+        .dataset-page-body .app-layout.sidebar-collapsed {
+          grid-template-columns: 1fr !important;
+          padding-left: 0;
+        }
+
         .dataset-page-layout {
           grid-template-columns: 1fr !important;
         }
@@ -108,6 +146,22 @@
           <a class="sidebar-link active" href="new-prediction.html">
             <img class="sidebar-icon-image" src="assets/sidebar-plus-icon.png" alt="" aria-hidden="true" />
             <span>New Prediction</span>
+          </a>
+          <a class="sidebar-link" href="history.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12a7 7 0 1 0 2-4.9M5 4v5h5" />
+            </svg>
+            <span>Predictions</span>
+          </a>
+          <a class="sidebar-link" href="patients.html">
+            <img class="sidebar-icon-image" src="assets/pattients.png" alt="" aria-hidden="true" />
+            <span>Patients</span>
+          </a>
+          <a class="sidebar-link" href="doctor-inbox.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9Zm0 6.5h5l1.5 2h3L15 14h5" />
+            </svg>
+            <span>Inbox</span>
           </a>
         </nav>
       </aside>
@@ -440,7 +494,7 @@
     <script src="/config.js"></script>
     <script src="noufar-app.js"></script>
     <script src="/config.js"></script>
-    <script src="app-shell.js?v=20260502c"></script>
+    <script src="app-shell.js?v=20260507-sidebarfix"></script>
     <script src="/config.js"></script>
     <script src="dataset-selection.js?v=20260502c"></script>
   </body>

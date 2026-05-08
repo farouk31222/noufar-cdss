@@ -17,7 +17,7 @@
     <link rel="icon" type="image/png" href="assets/noufar-logo.png" />
     <link rel="shortcut icon" href="assets/noufar-logo.png" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="dashboard.css?v=20260510-14" />
   </head>
   <body class="app-body prediction-page-body doctor-inbox-body" data-page="doctor-inbox">
     <div class="app-layout">
@@ -38,6 +38,16 @@
           <a class="sidebar-link" href="new-prediction.html">
             <img class="sidebar-icon-image" src="assets/sidebar-plus-icon.png" alt="" aria-hidden="true" />
             <span>New Prediction</span>
+          </a>
+          <a class="sidebar-link" href="history.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12a7 7 0 1 0 2-4.9M5 4v5h5" />
+            </svg>
+            <span>Predictions</span>
+          </a>
+          <a class="sidebar-link" href="patients.html">
+            <img class="sidebar-icon-image" src="assets/pattients.png" alt="" aria-hidden="true" />
+            <span>Patients</span>
           </a>
           <a class="sidebar-link active" href="doctor-inbox.html">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -137,6 +147,21 @@
                 <span class="dashboard-pill">Secure doctor-only access</span>
                 <span class="dashboard-pill">Full conversation history</span>
               </div>
+              <div class="prediction-page-hero-actions inbox-hero-actions">
+                <button class="btn btn-primary btn-sm inbox-hero-cta" type="button" data-support-new-message>
+                  <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+                    <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                  </svg>
+                  <span>New support message</span>
+                </button>
+                <button class="btn btn-secondary btn-sm inbox-hero-cta inbox-hero-cta-secondary" type="button" data-support-access-upgrade data-standard-access-upgrade-shell hidden>
+                  <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+                    <path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6l-8-4Z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+                    <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                  </svg>
+                  <span>Request prediction access</span>
+                </button>
+              </div>
             </div>
           </section>
 
@@ -157,7 +182,6 @@
       </div>
     </div>
 
-    <script src="/config.js"></script>
     <script src="app-shell.js"></script>
   </body>
 </html>

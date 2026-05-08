@@ -17,7 +17,7 @@
     <link rel="icon" type="image/png" href="assets/noufar-logo.png" />
     <link rel="shortcut icon" href="assets/noufar-logo.png" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="dashboard.css?v=20260510-14" />
   </head>
   <body class="app-body details-page-body">
     <div class="app-layout">
@@ -38,6 +38,23 @@
           <a class="sidebar-link" href="new-prediction.html">
             <img class="sidebar-icon-image" src="assets/sidebar-plus-icon.png" alt="" aria-hidden="true" />
             <span>New Prediction</span>
+          </a>
+          <a class="sidebar-link" href="history.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 8v4l2.5 2.5M3 12a9 9 0 1 0 3-6.7M3 4v5h5" />
+            </svg>
+            <span>Predictions</span>
+          </a>
+          <a class="sidebar-link" href="patients.html">
+            <img class="sidebar-icon-image" src="assets/pattients.png" alt="" aria-hidden="true" />
+            <span>Patients</span>
+          </a>
+          <a class="sidebar-link" href="doctor-inbox.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="4" y="6.5" width="16" height="11" rx="2.5" />
+              <path d="M4.8 8.4 12 13l7.2-4.6" />
+            </svg>
+            <span>Inbox</span>
           </a>
         </nav>
       </aside>
@@ -250,9 +267,10 @@
                       </label>
                       <label class="field chip-select-field">
                         <span>Anti-TPO</span>
-                        <input type="hidden" id="detail-anti-tpo" value="Negative" />
+                        <input type="hidden" id="detail-anti-tpo" value="Not measured" />
                         <div class="chip-select-group detail-chip-select-group" role="group" aria-label="Anti-TPO status">
-                          <button class="chip-select-option is-selected" type="button" data-chip-value="Negative">Negative</button>
+                          <button class="chip-select-option is-selected" type="button" data-chip-value="Not measured">Not measured</button>
+                          <button class="chip-select-option" type="button" data-chip-value="Negative">Negative</button>
                           <button class="chip-select-option" type="button" data-chip-value="Positive">Positive</button>
                         </div>
                       </label>
@@ -268,17 +286,19 @@
                       </label>
                       <label class="field chip-select-field">
                         <span>Anti-Tg</span>
-                        <input type="hidden" id="detail-anti-tg" value="Negative" />
+                        <input type="hidden" id="detail-anti-tg" value="Not measured" />
                         <div class="chip-select-group detail-chip-select-group" role="group" aria-label="Anti-Tg status">
-                          <button class="chip-select-option is-selected" type="button" data-chip-value="Negative">Negative</button>
+                          <button class="chip-select-option is-selected" type="button" data-chip-value="Not measured">Not measured</button>
+                          <button class="chip-select-option" type="button" data-chip-value="Negative">Negative</button>
                           <button class="chip-select-option" type="button" data-chip-value="Positive">Positive</button>
                         </div>
                       </label>
                       <label class="field chip-select-field">
                         <span>TSI</span>
-                        <input type="hidden" id="detail-tsi" value="Negative" />
+                        <input type="hidden" id="detail-tsi" value="Not measured" />
                         <div class="chip-select-group detail-chip-select-group" role="group" aria-label="TSI status">
-                          <button class="chip-select-option is-selected" type="button" data-chip-value="Negative">Negative</button>
+                          <button class="chip-select-option is-selected" type="button" data-chip-value="Not measured">Not measured</button>
+                          <button class="chip-select-option" type="button" data-chip-value="Negative">Negative</button>
                           <button class="chip-select-option" type="button" data-chip-value="Positive">Positive</button>
                         </div>
                       </label>
@@ -549,11 +569,8 @@
       </div>
     </section>
 
-    <script src="/config.js"></script>
-    <script src="data.js?v=20260501b"></script>
-    <script src="/config.js"></script>
-    <script src="app-shell.js?v=20260501c"></script>
-    <script src="/config.js"></script>
-    <script src="prediction-details.js?v=20260501c"></script>
+    <script src="data.js?v=20260506-2"></script>
+    <script src="app-shell.js?v=20260506-2"></script>
+    <script src="prediction-details.js?v=20260507-deletefix"></script>
   </body>
 </html>
